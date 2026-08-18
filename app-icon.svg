@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <!-- Background -->
+  <rect width="512" height="512" rx="115" fill="#121820"/>
+  
+  <!-- Terminals -->
+  <rect x="180" y="110" width="40" height="24" rx="4" fill="#64748B"/>
+  <rect x="292" y="110" width="40" height="24" rx="4" fill="#00E5FF"/>
+  
+  <!-- Battery Cell Body -->
+  <rect x="146" y="134" width="220" height="268" rx="20" fill="#1E293B" stroke="#334155" stroke-width="8"/>
+  
+  <!-- Sowilo / Lightning Rune -->
+  <path d="M286 170 L216 260 L270 260 L226 366 L306 270 L252 270 Z" 
+        fill="#00E5FF" 
+        stroke="#00E5FF" 
+        stroke-width="4" 
+        stroke-linejoin="round" 
+        stroke-linecap="round"/>
+</svg>
