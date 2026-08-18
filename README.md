@@ -1,9 +1,20 @@
-# JBD LiFePO4 Battery Monitor (Android)
+# Ström Monitor
 
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Flutter](https://img.shields.io/badge/Flutter-3.41.7-02569B?logo=flutter)](https://flutter.dev)
-[![Dart](https://img.shields.io/badge/Dart-3.11.5-0175C2?logo=dart)](https://dart.dev)
-[![Android](https://img.shields.io/badge/Android-API%2029%2B-3DDC84?logo=android)](https://developer.android.com)
+<p align="center">
+  <img src="assets/icon/icon.png" alt="Ström Monitor App Icon" width="128" height="128" />
+</p>
+
+<p align="center">
+  <strong>Modern BLE telemetry & battery monitor for JBD LiFePO4 Battery Management Systems.</strong><br>
+  <code>de.karoc.strommonitor</code>
+</p>
+
+<p align="center">
+  <a href="https://www.gnu.org/licenses/gpl-3.0"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL v3"></a>
+  <a href="https://flutter.dev"><img src="https://img.shields.io/badge/Flutter-3.41.7-02569B?logo=flutter" alt="Flutter"></a>
+  <a href="https://dart.dev"><img src="https://img.shields.io/badge/Dart-3.11.5-0175C2?logo=dart" alt="Dart"></a>
+  <a href="https://developer.android.com"><img src="https://img.shields.io/badge/Android-API%2029%2B-3DDC84?logo=android" alt="Android"></a>
+</p>
 
 An open-source, lightweight, and battery-conscious Android application built with **Flutter** to monitor, record, and visualize telemetry from **JBD (Xiaoxiang / Liontron)** LiFePO4 Battery Management Systems (BMS) over **Bluetooth Low Energy (BLE)**.
 

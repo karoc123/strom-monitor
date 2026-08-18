@@ -3,7 +3,7 @@ import 'package:sqflite/sqflite.dart';
 
 /// Database Manager handling SQLite creation, indexes, and connection lifecycle.
 class AppDatabase {
-  static const String dbName = 'jbd_battery_monitor.db';
+  static const String dbName = 'strommonitor.db';
   static const int dbVersion = 1;
 
   static final AppDatabase instance = AppDatabase._internal();

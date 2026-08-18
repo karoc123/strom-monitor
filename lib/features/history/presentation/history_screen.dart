@@ -297,14 +297,14 @@ class HistoryScreen extends ConsumerWidget {
       final tempDir = await getTemporaryDirectory();
       final ext = isCsv ? 'csv' : 'json';
       final fileName =
-          'jbd_battery_backup_${DateTime.now().millisecondsSinceEpoch}.$ext';
+          'strommonitor_backup_${DateTime.now().millisecondsSinceEpoch}.$ext';
       final file = File('${tempDir.path}/$fileName');
       await file.writeAsString(content);
 
       await SharePlus.instance.share(
         ShareParams(
           files: [XFile(file.path)],
-          subject: 'Export JBD Battery Telemetry',
+          subject: 'Ström Monitor Telemetry Export',
         ),
       );
     } catch (e) {

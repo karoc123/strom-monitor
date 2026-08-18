@@ -29,7 +29,7 @@ class GplLicenseDialog extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'JBD LiFePO4 Battery Monitor',
+              'Ström Monitor',
               style: theme.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.w600,
               ),

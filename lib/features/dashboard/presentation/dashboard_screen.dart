@@ -61,7 +61,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              settings.targetDeviceName ?? 'JBD Battery Monitor',
+              settings.targetDeviceName ?? 'Ström Monitor',
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
             if (settings.targetDeviceMac != null)

@@ -11,7 +11,7 @@ class JbdBatteryMonitorApp extends StatelessWidget {
     const primaryColor = Color(0xFF0284C7); // Cyan / Blue 600
 
     return MaterialApp(
-      title: 'JBD LiFePO4 Battery Monitor',
+      title: 'Ström Monitor',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.system,
       theme: ThemeData(

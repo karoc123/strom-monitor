@@ -6,9 +6,8 @@ import '../../core/database/models/battery_reading.dart';
 import '../../core/database/reading_dao.dart';
 import '../settings/data/settings_repository.dart';
 
-const String kBackgroundFetchTask =
-    'de.karoc.jbd_battery_monitor.fetch_telemetry';
-const String kBackgroundPeriodicTaskTag = 'jbd_periodic_telemetry';
+const String kBackgroundFetchTask = 'de.karoc.strommonitor.fetch_telemetry';
+const String kBackgroundPeriodicTaskTag = 'strommonitor_periodic_telemetry';
 
 /// Top-level callback dispatcher required by Android WorkManager.
 @pragma('vm:entry-point')
