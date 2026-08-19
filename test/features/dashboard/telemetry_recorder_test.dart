@@ -3,7 +3,9 @@ import 'package:jbd_battery_monitor/core/ble/ble_client.dart';
 import 'package:jbd_battery_monitor/core/database/app_database.dart';
 import 'package:jbd_battery_monitor/core/database/reading_dao.dart';
 import 'package:jbd_battery_monitor/core/protocol/jbd_telemetry_parser.dart';
+import 'package:jbd_battery_monitor/core/protocol/victron/victron_mppt_data.dart';
 import 'package:jbd_battery_monitor/features/dashboard/data/telemetry_recorder.dart';
+
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
@@ -160,5 +162,103 @@ void main() {
       expect(didRecord, isTrue);
       expect(await readingDao.countReadings(), equals(2));
     });
+
+    test('records when solar power delta threshold is exceeded', () async {
+      final s1 = createSnapshot(
+        voltage: 13.3,
+        current: 0.0,
+        soc: 80,
+        time: DateTime.fromMillisecondsSinceEpoch(100000),
+      );
+      await recorder.processSnapshot(s1);
+
+      // 5 seconds later with solar power jump from null to 50W
+      final s2 = createSnapshot(
+        voltage: 13.3,
+        current: 0.0,
+        soc: 80,
+        time: DateTime.fromMillisecondsSinceEpoch(105000),
+      );
+      final didRecord = await recorder.processTelemetry(
+        batterySnapshot: s2,
+        solarData: VictronMpptData(
+          deviceState: VictronDeviceState.bulk,
+          chargerError: VictronChargerError.noError,
+          batteryVoltage: 13.3,
+          batteryCurrent: 3.5,
+          solarPower: 50.0,
+          yieldTodayWh: 200.0,
+          timestamp: DateTime.fromMillisecondsSinceEpoch(105000),
+          rawState: 3,
+          rawError: 0,
+        ),
+        referenceTime: s2.timestamp,
+      );
+      expect(didRecord, isTrue);
+      expect(await readingDao.countReadings(), equals(2));
+    });
+
+    test(
+      'rejects stale battery snapshot older than maxStaleDuration',
+      () async {
+        final oldSnapshot = createSnapshot(
+          voltage: 13.3,
+          current: 0.0,
+          soc: 80,
+          time: DateTime.fromMillisecondsSinceEpoch(100000),
+        );
+
+        // Current time is 100 seconds later (> 30s maxStaleDuration)
+        final didRecord = await recorder.processTelemetry(
+          batterySnapshot: oldSnapshot,
+          referenceTime: DateTime.fromMillisecondsSinceEpoch(200000),
+        );
+
+        expect(didRecord, isFalse);
+        expect(await readingDao.countReadings(), equals(0));
+      },
+    );
+
+    test(
+      'discards stale solar data when recording fresh battery snapshot',
+      () async {
+        final freshSnapshot = createSnapshot(
+          voltage: 13.3,
+          current: 2.0,
+          soc: 80,
+          time: DateTime.fromMillisecondsSinceEpoch(200000),
+        );
+
+        // Solar data is 120 seconds old (> 30s maxStaleDuration)
+        final staleSolar = VictronMpptData(
+          deviceState: VictronDeviceState.bulk,
+          chargerError: VictronChargerError.noError,
+          batteryVoltage: 13.3,
+          batteryCurrent: 10.0,
+          solarPower: 150.0,
+          yieldTodayWh: 900.0,
+          timestamp: DateTime.fromMillisecondsSinceEpoch(80000),
+          rawState: 3,
+          rawError: 0,
+        );
+
+        final didRecord = await recorder.processTelemetry(
+          batterySnapshot: freshSnapshot,
+          solarData: staleSolar,
+          referenceTime: DateTime.fromMillisecondsSinceEpoch(200000),
+        );
+
+        expect(didRecord, isTrue);
+        expect(await readingDao.countReadings(), equals(1));
+
+        final latest = await readingDao.getLatestReading();
+        expect(latest, isNotNull);
+        expect(latest!.soc, equals(80));
+        expect(latest.voltage, equals(13.3));
+        // Solar data must NOT be attached because it was stale!
+        expect(latest.solarPower, isNull);
+        expect(latest.solarYieldToday, isNull);
+      },
+    );
   });
 }

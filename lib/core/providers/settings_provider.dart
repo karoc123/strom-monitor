@@ -21,6 +21,33 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     state = state.copyWith(targetDeviceMac: mac, targetDeviceName: name);
   }
 
+  Future<void> removeTargetDevice() async {
+    await _repository.removeTargetDevice();
+    state = state.copyWith(clearBmsDevice: true);
+  }
+
+  Future<void> setVictronDevice({
+    required String mac,
+    required String name,
+    required String encryptionKey,
+  }) async {
+    await _repository.saveVictronDevice(
+      mac: mac,
+      name: name,
+      encryptionKey: encryptionKey,
+    );
+    state = state.copyWith(
+      victronDeviceMac: mac,
+      victronDeviceName: name,
+      victronEncryptionKey: encryptionKey,
+    );
+  }
+
+  Future<void> removeVictronDevice() async {
+    await _repository.removeVictronDevice();
+    state = state.copyWith(clearVictronDevice: true);
+  }
+
   Future<void> setBackgroundInterval(int minutes) async {
     await _repository.saveBackgroundInterval(minutes);
     state = state.copyWith(backgroundIntervalMinutes: minutes);

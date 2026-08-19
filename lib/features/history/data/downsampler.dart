@@ -35,6 +35,7 @@ class Downsampler {
       double sumPower = 0;
       double? sumC1, sumC2, sumC3, sumC4;
       double? sumTempBms, sumTempCells;
+      double? sumSolarPower, sumSolarYield, sumSolarV, sumSolarI;
       int count = bucket.length;
 
       for (final r in bucket) {
@@ -62,6 +63,18 @@ class Downsampler {
         if (r.tempCells != null) {
           sumTempCells = (sumTempCells ?? 0) + r.tempCells!;
         }
+        if (r.solarPower != null) {
+          sumSolarPower = (sumSolarPower ?? 0) + r.solarPower!;
+        }
+        if (r.solarYieldToday != null) {
+          sumSolarYield = (sumSolarYield ?? 0) + r.solarYieldToday!;
+        }
+        if (r.solarVoltage != null) {
+          sumSolarV = (sumSolarV ?? 0) + r.solarVoltage!;
+        }
+        if (r.solarCurrent != null) {
+          sumSolarI = (sumSolarI ?? 0) + r.solarCurrent!;
+        }
       }
 
       result.add(
@@ -78,6 +91,12 @@ class Downsampler {
           tempBms: sumTempBms != null ? sumTempBms / count : null,
           tempCells: sumTempCells != null ? sumTempCells / count : null,
           cycles: bucket.last.cycles,
+          solarPower: sumSolarPower != null ? sumSolarPower / count : null,
+          solarYieldToday:
+              bucket.last.solarYieldToday, // Max yield of the bucket
+          solarVoltage: sumSolarV != null ? sumSolarV / count : null,
+          solarCurrent: sumSolarI != null ? sumSolarI / count : null,
+          solarState: bucket.last.solarState,
         ),
       );
     }

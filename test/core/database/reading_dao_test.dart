@@ -37,6 +37,11 @@ void main() {
         tempBms: 22.5,
         tempCells: 21.0,
         cycles: 15,
+        solarPower: 120.5,
+        solarYieldToday: 1500.0,
+        solarVoltage: 18.2,
+        solarCurrent: 6.6,
+        solarState: 3,
       );
 
       final id = await readingDao.insertReading(reading);
@@ -54,6 +59,11 @@ void main() {
       expect(latest.cellVoltage1, closeTo(3.330, 0.001));
       expect(latest.tempBms, closeTo(22.5, 0.001));
       expect(latest.cycles, equals(15));
+      expect(latest.solarPower, closeTo(120.5, 0.001));
+      expect(latest.solarYieldToday, closeTo(1500.0, 0.001));
+      expect(latest.solarVoltage, closeTo(18.2, 0.001));
+      expect(latest.solarCurrent, closeTo(6.6, 0.001));
+      expect(latest.solarState, equals(3));
     });
 
     test(
@@ -155,6 +165,81 @@ void main() {
 
       await readingDao.clearAll();
       expect(await readingDao.countReadings(), equals(0));
+    });
+
+    test('migrates database from V1 to V2 preserving existing data', () async {
+      final db = await openDatabase(
+        inMemoryDatabasePath,
+        version: 1,
+        onCreate: (db, version) async {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS readings (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              timestamp INTEGER NOT NULL UNIQUE,
+              soc INTEGER NOT NULL,
+              voltage REAL NOT NULL,
+              current REAL NOT NULL,
+              power REAL NOT NULL,
+              cell_voltage_1 REAL,
+              cell_voltage_2 REAL,
+              cell_voltage_3 REAL,
+              cell_voltage_4 REAL,
+              temp_bms REAL,
+              temp_cells REAL,
+              cycles INTEGER
+            );
+          ''');
+        },
+      );
+
+      final daoV1 = ReadingDao.fromDatabase(db);
+      await daoV1.insertReading(
+        const BatteryReading(
+          timestamp: 5000,
+          soc: 75,
+          voltage: 13.2,
+          current: 1.0,
+          power: 13.2,
+        ),
+      );
+
+      // Perform V1 -> V2 upgrade
+      await db.execute('ALTER TABLE readings ADD COLUMN solar_power REAL;');
+      await db.execute(
+        'ALTER TABLE readings ADD COLUMN solar_yield_today REAL;',
+      );
+      await db.execute('ALTER TABLE readings ADD COLUMN solar_voltage REAL;');
+      await db.execute('ALTER TABLE readings ADD COLUMN solar_current REAL;');
+      await db.execute('ALTER TABLE readings ADD COLUMN solar_state INTEGER;');
+
+      final daoV2 = ReadingDao.fromDatabase(db);
+      // Retrieve existing legacy reading
+      final legacy = await daoV2.getLatestReading();
+      expect(legacy, isNotNull);
+      expect(legacy!.timestamp, equals(5000));
+      expect(legacy.soc, equals(75));
+      expect(legacy.solarPower, isNull);
+
+      // Insert new V2 reading with solar telemetry
+      await daoV2.insertReading(
+        const BatteryReading(
+          timestamp: 6000,
+          soc: 76,
+          voltage: 13.25,
+          current: 2.0,
+          power: 26.5,
+          solarPower: 150.0,
+          solarYieldToday: 800.0,
+        ),
+      );
+
+      final updatedLatest = await daoV2.getLatestReading();
+      expect(updatedLatest, isNotNull);
+      expect(updatedLatest!.timestamp, equals(6000));
+      expect(updatedLatest.solarPower, closeTo(150.0, 0.001));
+      expect(updatedLatest.solarYieldToday, closeTo(800.0, 0.001));
+
+      await db.close();
     });
   });
 }

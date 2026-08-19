@@ -11,14 +11,21 @@ import 'providers/history_provider.dart';
 import 'widgets/history_chart.dart';
 import 'widgets/time_range_selector.dart';
 
-class HistoryScreen extends ConsumerWidget {
+class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HistoryScreen> createState() => _HistoryScreenState();
+}
+
+class _HistoryScreenState extends ConsumerState<HistoryScreen> {
+  HistoryMetric _selectedBatteryMetric = HistoryMetric.soc;
+  HistoryMetric _selectedSolarMetric = HistoryMetric.solarPower;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final selectedWindow = ref.watch(selectedTimeWindowProvider);
-    final selectedMetric = ref.watch(selectedMetricProvider);
     final readingsAsync = ref.watch(historyReadingsProvider);
 
     return Scaffold(
@@ -57,9 +64,18 @@ class HistoryScreen extends ConsumerWidget {
                   ref.read(selectedTimeWindowProvider.notifier).state = window;
                 },
               ),
-              const SizedBox(height: 12),
-              _buildMetricSelector(context, ref, selectedMetric),
               const SizedBox(height: 16),
+
+              // ==================== GRAPH 1: BATTERIE VERLAUF ====================
+              _buildSectionTitle(
+                'Battery History (JBD BMS)',
+                Icons.battery_charging_full,
+                const Color(0xFF3B82F6),
+                theme,
+              ),
+              const SizedBox(height: 8),
+              _buildBatteryMetricSelector(_selectedBatteryMetric),
+              const SizedBox(height: 12),
               Card(
                 elevation: 0,
                 color: theme.colorScheme.surfaceContainer,
@@ -72,24 +88,80 @@ class HistoryScreen extends ConsumerWidget {
                   ),
                 ),
                 child: readingsAsync.when(
-                  data: (readings) =>
-                      HistoryChart(readings: readings, metric: selectedMetric),
+                  data: (readings) => HistoryChart(
+                    readings: readings,
+                    metric: _selectedBatteryMetric,
+                  ),
                   loading: () => const SizedBox(
-                    height: 240,
+                    height: 200,
                     child: Center(child: CircularProgressIndicator()),
                   ),
                   error: (err, _) => SizedBox(
-                    height: 240,
+                    height: 200,
                     child: Center(child: Text('Error loading history: $err')),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
               readingsAsync.maybeWhen(
-                data: (readings) =>
-                    _buildSummaryCards(readings, selectedMetric, theme),
+                data: (readings) => _buildBatterySummaryCards(
+                  readings,
+                  _selectedBatteryMetric,
+                  theme,
+                ),
                 orElse: () => const SizedBox.shrink(),
               ),
+
+              const SizedBox(height: 24),
+
+              // ==================== GRAPH 2: SOLAR VERLAUF (VICTRON MPPT) ====================
+              _buildSectionTitle(
+                'Solar History (Victron MPPT)',
+                Icons.solar_power,
+                const Color(0xFFF59E0B),
+                theme,
+              ),
+              const SizedBox(height: 8),
+              _buildSolarMetricSelector(_selectedSolarMetric),
+              const SizedBox(height: 12),
+              Card(
+                elevation: 0,
+                color: theme.colorScheme.surfaceContainer,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(
+                    color: theme.colorScheme.outlineVariant.withValues(
+                      alpha: 0.3,
+                    ),
+                  ),
+                ),
+                child: readingsAsync.when(
+                  data: (readings) => HistoryChart(
+                    readings: readings,
+                    metric: _selectedSolarMetric,
+                  ),
+                  loading: () => const SizedBox(
+                    height: 200,
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                  error: (err, _) => SizedBox(
+                    height: 200,
+                    child: Center(
+                      child: Text('Error loading solar history: $err'),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              readingsAsync.maybeWhen(
+                data: (readings) => _buildSolarSummaryCards(
+                  readings,
+                  _selectedSolarMetric,
+                  theme,
+                ),
+                orElse: () => const SizedBox.shrink(),
+              ),
+
               const SizedBox(height: 32),
             ],
           ),
@@ -98,26 +170,60 @@ class HistoryScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildMetricSelector(
-    BuildContext context,
-    WidgetRef ref,
-    HistoryMetric selectedMetric,
+  Widget _buildSectionTitle(
+    String title,
+    IconData icon,
+    Color color,
+    ThemeData theme,
   ) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: color),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBatteryMetricSelector(HistoryMetric selectedMetric) {
+    const metrics = [
+      HistoryMetric.soc,
+      HistoryMetric.current,
+      HistoryMetric.power,
+      HistoryMetric.voltage,
+    ];
+
     return SegmentedButton<HistoryMetric>(
-      segments: HistoryMetric.values.map((metric) {
-        return ButtonSegment<HistoryMetric>(
-          value: metric,
-          label: Text(metric.label),
-        );
+      segments: metrics.map((m) {
+        return ButtonSegment<HistoryMetric>(value: m, label: Text(m.label));
       }).toList(),
       selected: {selectedMetric},
       onSelectionChanged: (newSelection) {
-        ref.read(selectedMetricProvider.notifier).state = newSelection.first;
+        setState(() => _selectedBatteryMetric = newSelection.first);
       },
     );
   }
 
-  Widget _buildSummaryCards(
+  Widget _buildSolarMetricSelector(HistoryMetric selectedMetric) {
+    const metrics = [HistoryMetric.solarPower, HistoryMetric.solarYield];
+
+    return SegmentedButton<HistoryMetric>(
+      segments: metrics.map((m) {
+        return ButtonSegment<HistoryMetric>(value: m, label: Text(m.label));
+      }).toList(),
+      selected: {selectedMetric},
+      onSelectionChanged: (newSelection) {
+        setState(() => _selectedSolarMetric = newSelection.first);
+      },
+    );
+  }
+
+  Widget _buildBatterySummaryCards(
     List<BatteryReading> readings,
     HistoryMetric metric,
     ThemeData theme,
@@ -143,6 +249,8 @@ class HistoryScreen extends ConsumerWidget {
         case HistoryMetric.power:
           v = r.power;
           break;
+        default:
+          v = 0;
       }
       if (v < min) min = v;
       if (v > max) max = v;
@@ -154,7 +262,7 @@ class HistoryScreen extends ConsumerWidget {
       children: [
         Expanded(
           child: _buildStatTile(
-            'Minimum',
+            'Min',
             '${min.toStringAsFixed(1)} ${metric.unit}',
             theme,
           ),
@@ -162,7 +270,7 @@ class HistoryScreen extends ConsumerWidget {
         const SizedBox(width: 8),
         Expanded(
           child: _buildStatTile(
-            'Average',
+            'Avg',
             '${avg.toStringAsFixed(1)} ${metric.unit}',
             theme,
           ),
@@ -170,8 +278,69 @@ class HistoryScreen extends ConsumerWidget {
         const SizedBox(width: 8),
         Expanded(
           child: _buildStatTile(
-            'Maximum',
+            'Max',
             '${max.toStringAsFixed(1)} ${metric.unit}',
+            theme,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSolarSummaryCards(
+    List<BatteryReading> readings,
+    HistoryMetric metric,
+    ThemeData theme,
+  ) {
+    final solarReadings = readings
+        .where((r) => r.solarPower != null || r.solarYieldToday != null)
+        .toList();
+    if (solarReadings.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    double peakPower = 0;
+    double maxYield = 0;
+    double powerSum = 0;
+    int powerCount = 0;
+
+    for (final r in solarReadings) {
+      if (r.solarPower != null) {
+        if (r.solarPower! > peakPower) peakPower = r.solarPower!;
+        powerSum += r.solarPower!;
+        powerCount++;
+      }
+      if (r.solarYieldToday != null && r.solarYieldToday! > maxYield) {
+        maxYield = r.solarYieldToday!;
+      }
+    }
+
+    final avgPower = powerCount > 0 ? powerSum / powerCount : 0.0;
+
+    return Row(
+      children: [
+        Expanded(
+          child: _buildStatTile(
+            'Peak Power',
+            '${peakPower.toStringAsFixed(0)} W',
+            theme,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _buildStatTile(
+            'Max Yield',
+            maxYield >= 1000
+                ? '${(maxYield / 1000).toStringAsFixed(2)} kWh'
+                : '${maxYield.toStringAsFixed(0)} Wh',
+            theme,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _buildStatTile(
+            'Avg Solar',
+            '${avgPower.toStringAsFixed(0)} W',
             theme,
           ),
         ),

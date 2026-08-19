@@ -62,7 +62,7 @@ The application balances real-time diagnostic visibility during active use with 
 
 ---
 
-## 4. SQLite Database Schema
+## 4. SQLite Database Schema (Version 2)
 
 ```sql
 CREATE TABLE readings (
@@ -73,19 +73,26 @@ CREATE TABLE readings (
     current REAL NOT NULL,                 -- Current in Amperes (Negative = discharge, Positive = charge)
     power REAL NOT NULL,                   -- Calculated: voltage * current (Watts)
     
-    -- Extensible Telemetry Fields (Nullable for V1)
+    -- JBD Diagnostics
     cell_voltage_1 REAL,                   -- Millivolts converted to Volts
     cell_voltage_2 REAL,
     cell_voltage_3 REAL,
     cell_voltage_4 REAL,
     temp_bms REAL,                         -- Temperature in Celsius
     temp_cells REAL,                       -- Temperature in Celsius
-    cycles INTEGER                         -- Lifetime charge cycles
+    cycles INTEGER,                        -- Lifetime charge cycles
+
+    -- Victron SmartSolar MPPT Telemetry (V2 Migration)
+    solar_power REAL,                      -- Solar Generation in Watts (W)
+    solar_yield_today REAL,                -- Daily Harvest in Watt-hours (Wh)
+    solar_voltage REAL,                    -- Battery/Solar Voltage in Volts (V)
+    solar_current REAL,                    -- Solar Charge Current in Amps (A)
+    solar_state INTEGER                    -- Raw Victron Device State (0-9)
 );
 
 CREATE INDEX idx_readings_timestamp ON readings(timestamp);
-
 ```
+
 
 ---
 

@@ -16,6 +16,13 @@ class BatteryReading {
   final double? tempCells;
   final int? cycles;
 
+  // Solar (Victron MPPT) telemetry fields
+  final double? solarPower; // Instantaneous solar power in Watts
+  final double? solarYieldToday; // Solar yield today in Watt-hours (Wh)
+  final double? solarVoltage; // Solar panel / battery voltage in Volts
+  final double? solarCurrent; // Solar charge current in Amperes
+  final int? solarState; // VictronDeviceState code
+
   const BatteryReading({
     this.id,
     required this.timestamp,
@@ -30,6 +37,11 @@ class BatteryReading {
     this.tempBms,
     this.tempCells,
     this.cycles,
+    this.solarPower,
+    this.solarYieldToday,
+    this.solarVoltage,
+    this.solarCurrent,
+    this.solarState,
   });
 
   DateTime get dateTime => DateTime.fromMillisecondsSinceEpoch(timestamp);
@@ -50,6 +62,11 @@ class BatteryReading {
       tempBms: (map['temp_bms'] as num?)?.toDouble(),
       tempCells: (map['temp_cells'] as num?)?.toDouble(),
       cycles: map['cycles'] as int?,
+      solarPower: (map['solar_power'] as num?)?.toDouble(),
+      solarYieldToday: (map['solar_yield_today'] as num?)?.toDouble(),
+      solarVoltage: (map['solar_voltage'] as num?)?.toDouble(),
+      solarCurrent: (map['solar_current'] as num?)?.toDouble(),
+      solarState: map['solar_state'] as int?,
     );
   }
 
@@ -61,17 +78,20 @@ class BatteryReading {
       'voltage': voltage,
       'current': current,
       'power': power,
-      'cell_voltage_1': cellVoltage1,
-      'cell_voltage_2': cellVoltage2,
-      'cell_voltage_3': cellVoltage3,
-      'cell_voltage_4': cellVoltage4,
-      'temp_bms': tempBms,
-      'temp_cells': tempCells,
-      'cycles': cycles,
     };
-    if (id != null) {
-      map['id'] = id;
-    }
+    if (id != null) map['id'] = id;
+    if (cellVoltage1 != null) map['cell_voltage_1'] = cellVoltage1;
+    if (cellVoltage2 != null) map['cell_voltage_2'] = cellVoltage2;
+    if (cellVoltage3 != null) map['cell_voltage_3'] = cellVoltage3;
+    if (cellVoltage4 != null) map['cell_voltage_4'] = cellVoltage4;
+    if (tempBms != null) map['temp_bms'] = tempBms;
+    if (tempCells != null) map['temp_cells'] = tempCells;
+    if (cycles != null) map['cycles'] = cycles;
+    if (solarPower != null) map['solar_power'] = solarPower;
+    if (solarYieldToday != null) map['solar_yield_today'] = solarYieldToday;
+    if (solarVoltage != null) map['solar_voltage'] = solarVoltage;
+    if (solarCurrent != null) map['solar_current'] = solarCurrent;
+    if (solarState != null) map['solar_state'] = solarState;
     return map;
   }
 
@@ -84,7 +104,7 @@ class BatteryReading {
 
   /// CSV Header row
   static String get csvHeader =>
-      'timestamp_ms,iso_time,soc_percent,voltage_v,current_a,power_w,cell1_v,cell2_v,cell3_v,cell4_v,temp_bms_c,temp_cells_c,cycles';
+      'timestamp_ms,iso_time,soc_percent,voltage_v,current_a,power_w,cell1_v,cell2_v,cell3_v,cell4_v,temp_bms_c,temp_cells_c,cycles,solar_power_w,solar_yield_wh,solar_v,solar_a,solar_state';
 
   /// Convert to CSV row
   String toCsvRow() {
@@ -93,7 +113,8 @@ class BatteryReading {
     ).toIso8601String();
     return '$timestamp,$iso,$soc,$voltage,$current,$power,'
         '${cellVoltage1 ?? ""},${cellVoltage2 ?? ""},${cellVoltage3 ?? ""},${cellVoltage4 ?? ""},'
-        '${tempBms ?? ""},${tempCells ?? ""},${cycles ?? ""}';
+        '${tempBms ?? ""},${tempCells ?? ""},${cycles ?? ""},'
+        '${solarPower ?? ""},${solarYieldToday ?? ""},${solarVoltage ?? ""},${solarCurrent ?? ""},${solarState ?? ""}';
   }
 
   /// Parse from CSV row
@@ -130,6 +151,22 @@ class BatteryReading {
           ? int.tryParse(parts[12])
           : null;
 
+      double? solP = parts.length > 13 && parts[13].isNotEmpty
+          ? double.tryParse(parts[13])
+          : null;
+      double? solY = parts.length > 14 && parts[14].isNotEmpty
+          ? double.tryParse(parts[14])
+          : null;
+      double? solV = parts.length > 15 && parts[15].isNotEmpty
+          ? double.tryParse(parts[15])
+          : null;
+      double? solI = parts.length > 16 && parts[16].isNotEmpty
+          ? double.tryParse(parts[16])
+          : null;
+      int? solS = parts.length > 17 && parts[17].isNotEmpty
+          ? int.tryParse(parts[17])
+          : null;
+
       return BatteryReading(
         timestamp: ts,
         soc: soc,
@@ -143,6 +180,11 @@ class BatteryReading {
         tempBms: tb,
         tempCells: tc,
         cycles: cyc,
+        solarPower: solP,
+        solarYieldToday: solY,
+        solarVoltage: solV,
+        solarCurrent: solI,
+        solarState: solS,
       );
     } catch (_) {
       return null;
@@ -151,5 +193,5 @@ class BatteryReading {
 
   @override
   String toString() =>
-      'BatteryReading(ts: $timestamp, soc: $soc%, voltage: ${voltage}V, current: ${current}A, power: ${power}W)';
+      'BatteryReading(ts: $timestamp, soc: $soc%, voltage: ${voltage}V, current: ${current}A, power: ${power}W, solar: ${solarPower ?? "--"}W)';
 }

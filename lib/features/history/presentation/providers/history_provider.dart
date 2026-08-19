@@ -4,19 +4,23 @@ import '../../../../core/providers/database_provider.dart';
 import '../../data/downsampler.dart';
 import '../../domain/time_window.dart';
 
-enum HistoryMetric { soc, voltage, current, power }
+enum HistoryMetric { soc, current, power, voltage, solarPower, solarYield }
 
 extension HistoryMetricExtension on HistoryMetric {
   String get label {
     switch (this) {
       case HistoryMetric.soc:
         return 'SoC (%)';
-      case HistoryMetric.voltage:
-        return 'Voltage (V)';
       case HistoryMetric.current:
         return 'Current (A)';
       case HistoryMetric.power:
         return 'Power (W)';
+      case HistoryMetric.voltage:
+        return 'Voltage (V)';
+      case HistoryMetric.solarPower:
+        return 'Solar (W)';
+      case HistoryMetric.solarYield:
+        return 'Yield (Wh)';
     }
   }
 
@@ -24,12 +28,15 @@ extension HistoryMetricExtension on HistoryMetric {
     switch (this) {
       case HistoryMetric.soc:
         return '%';
-      case HistoryMetric.voltage:
-        return 'V';
       case HistoryMetric.current:
         return 'A';
       case HistoryMetric.power:
+      case HistoryMetric.solarPower:
         return 'W';
+      case HistoryMetric.voltage:
+        return 'V';
+      case HistoryMetric.solarYield:
+        return 'Wh';
     }
   }
 }

@@ -95,6 +95,7 @@ class BleClient {
             id: id,
             name: name.isNotEmpty ? name : 'Unknown Device',
             rssi: r.rssi,
+            manufacturerData: r.advertisementData.manufacturerData,
           );
         }
         yield devicesMap.values.toList();
@@ -384,6 +385,8 @@ class BleClient {
     _writeCharacteristic = null;
     _notifyCharacteristic = null;
     _connectedDevice = null;
+    _latestBasicInfo = null;
+    _latestCellVoltages = const [];
     _reassembler.reset();
   }
 

@@ -1,9 +1,11 @@
 import 'package:flutter/widgets.dart';
 import 'package:workmanager/workmanager.dart';
 import '../../core/ble/ble_client.dart';
+import '../../core/ble/victron_ble_client.dart';
 import '../../core/database/app_database.dart';
 import '../../core/database/models/battery_reading.dart';
 import '../../core/database/reading_dao.dart';
+import '../../core/protocol/victron/victron_mppt_data.dart';
 import '../settings/data/settings_repository.dart';
 
 const String kBackgroundFetchTask = 'de.karoc.strommonitor.fetch_telemetry';
@@ -19,38 +21,66 @@ void callbackDispatcher() {
       final settingsRepo = await SettingsRepository.create();
       final settings = settingsRepo.loadSettings();
 
-      final targetMac = settings.targetDeviceMac;
-      if (targetMac == null || targetMac.isEmpty) {
-        // No target device configured
+      if (!settings.hasBmsDevice && !settings.hasVictronDevice) {
+        // No devices configured
         return Future.value(true);
       }
 
-      // Query BLE telemetry with a strict 10s timeout
-      final snapshot = await BleClient.fetchOneShotTelemetry(
-        deviceId: targetMac,
-        timeout: const Duration(seconds: 10),
-      );
+      // Query BLE telemetry for both BMS and Victron in parallel
+      Future<BatterySnapshot?> bmsFuture = settings.hasBmsDevice
+          ? BleClient.fetchOneShotTelemetry(
+              deviceId: settings.targetDeviceMac!,
+              timeout: const Duration(seconds: 10),
+            )
+          : Future.value(null);
 
-      if (snapshot != null) {
+      Future<VictronMpptData?> solarFuture = settings.hasVictronDevice
+          ? VictronBleClient.fetchOneShotSolarTelemetry(
+              targetMac: settings.victronDeviceMac!,
+              encryptionKey: settings.victronEncryptionKey!,
+              timeout: const Duration(seconds: 5),
+            )
+          : Future.value(null);
+
+      final results = await Future.wait([bmsFuture, solarFuture]);
+      final bmsSnapshot = results[0] as BatterySnapshot?;
+      final solarData = results[1] as VictronMpptData?;
+
+      // If BMS is configured, but query failed (bmsSnapshot == null),
+      // skip recording to prevent recording fake/stale 0% SoC readings.
+      if (settings.hasBmsDevice && bmsSnapshot == null) {
+        return Future.value(true);
+      }
+
+      if (bmsSnapshot != null || solarData != null) {
         final appDb = AppDatabase.instance;
         final dao = ReadingDao(appDb);
 
-        final info = snapshot.basicInfo;
-        final cells = snapshot.cellVoltages;
+        final nowMs = DateTime.now().millisecondsSinceEpoch;
+        final info = bmsSnapshot?.basicInfo;
+        final cells = bmsSnapshot?.cellVoltages ?? const [];
 
         final reading = BatteryReading(
-          timestamp: snapshot.timestamp.millisecondsSinceEpoch,
-          soc: info.soc,
-          voltage: info.voltage,
-          current: info.current,
-          power: info.power,
+          timestamp:
+              bmsSnapshot?.timestamp.millisecondsSinceEpoch ??
+              solarData?.timestamp.millisecondsSinceEpoch ??
+              nowMs,
+          soc: info?.soc ?? 0,
+          voltage: info?.voltage ?? (solarData?.batteryVoltage ?? 0.0),
+          current: info?.current ?? 0.0,
+          power: info?.power ?? 0.0,
           cellVoltage1: cells.isNotEmpty ? cells[0] : null,
           cellVoltage2: cells.length > 1 ? cells[1] : null,
           cellVoltage3: cells.length > 2 ? cells[2] : null,
           cellVoltage4: cells.length > 3 ? cells[3] : null,
-          tempBms: info.tempBms,
-          tempCells: info.tempCells,
-          cycles: info.cycleCount,
+          tempBms: info?.tempBms,
+          tempCells: info?.tempCells,
+          cycles: info?.cycleCount,
+          solarPower: solarData?.solarPower,
+          solarYieldToday: solarData?.yieldTodayWh,
+          solarVoltage: solarData?.batteryVoltage,
+          solarCurrent: solarData?.batteryCurrent,
+          solarState: solarData?.rawState,
         );
 
         await dao.insertReading(reading);

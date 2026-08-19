@@ -18,6 +18,11 @@ void main() {
         tempBms: 22.0,
         tempCells: 21.5,
         cycles: 10,
+        solarPower: 85.0,
+        solarYieldToday: 1200.0,
+        solarVoltage: 19.5,
+        solarCurrent: 4.3,
+        solarState: 3,
       ),
       const BatteryReading(
         timestamp: 1700000060000,
@@ -32,6 +37,11 @@ void main() {
         tempBms: 22.2,
         tempCells: 21.8,
         cycles: 10,
+        solarPower: 110.0,
+        solarYieldToday: 1250.0,
+        solarVoltage: 19.8,
+        solarCurrent: 5.5,
+        solarState: 3,
       ),
     ];
 
@@ -51,20 +61,29 @@ void main() {
       expect(imported[0].cellVoltage1, closeTo(3.338, 0.001));
       expect(imported[0].tempBms, closeTo(22.0, 0.001));
       expect(imported[0].cycles, equals(10));
+      expect(imported[0].solarPower, closeTo(85.0, 0.001));
+      expect(imported[0].solarYieldToday, closeTo(1200.0, 0.001));
+      expect(imported[0].solarVoltage, closeTo(19.5, 0.001));
+      expect(imported[0].solarCurrent, closeTo(4.3, 0.001));
+      expect(imported[0].solarState, equals(3));
 
       expect(imported[1].timestamp, equals(1700000060000));
       expect(imported[1].current, closeTo(-1.20, 0.001));
+      expect(imported[1].solarPower, closeTo(110.0, 0.001));
     });
 
     test('exports to JSON and imports back without loss', () {
       final jsonString = DataExporter.exportToJson(sampleReadings);
       expect(jsonString.contains('"soc": 90'), isTrue);
+      expect(jsonString.contains('"solar_power": 85.0'), isTrue);
 
       final imported = DataExporter.importFromJson(jsonString);
       expect(imported.length, equals(2));
       expect(imported[0].timestamp, equals(1700000000000));
       expect(imported[0].soc, equals(90));
+      expect(imported[0].solarPower, closeTo(85.0, 0.001));
       expect(imported[1].current, closeTo(-1.20, 0.001));
+      expect(imported[1].solarPower, closeTo(110.0, 0.001));
     });
 
     test('handles corrupt CSV/JSON gracefully during import', () {

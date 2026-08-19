@@ -49,7 +49,7 @@ void main() {
 
         final db = await openDatabase(
           dbFile,
-          version: 1,
+          version: 2,
           onCreate: (db, version) async {
             await db.execute('''
               CREATE TABLE IF NOT EXISTS readings (
@@ -65,7 +65,12 @@ void main() {
                 cell_voltage_4 REAL,
                 temp_bms REAL,
                 temp_cells REAL,
-                cycles INTEGER
+                cycles INTEGER,
+                solar_power REAL,
+                solar_yield_today REAL,
+                solar_voltage REAL,
+                solar_current REAL,
+                solar_state INTEGER
               );
             ''');
           },

@@ -4,10 +4,13 @@ class BleDeviceInfo {
   final String name; // Advertised Device Name
   final int rssi; // Signal Strength in dBm
 
+  final Map<int, List<int>> manufacturerData;
+
   const BleDeviceInfo({
     required this.id,
     required this.name,
     required this.rssi,
+    this.manufacturerData = const {},
   });
 
   bool get isJbdCandidate {
@@ -15,8 +18,15 @@ class BleDeviceInfo {
     return lower.contains('jbd') ||
         lower.contains('xiaoxiang') ||
         lower.contains('liontron') ||
-        lower.contains('bms') ||
-        lower.contains('smart');
+        lower.contains('bms');
+  }
+
+  bool get isVictronCandidate {
+    if (manufacturerData.containsKey(0x02E1)) return true;
+    final lower = name.toLowerCase();
+    return lower.contains('smartsolar') ||
+        lower.contains('bluesolar') ||
+        lower.contains('victron');
   }
 
   @override

@@ -4,7 +4,7 @@ import 'package:sqflite/sqflite.dart';
 /// Database Manager handling SQLite creation, indexes, and connection lifecycle.
 class AppDatabase {
   static const String dbName = 'strommonitor.db';
-  static const int dbVersion = 1;
+  static const int dbVersion = 2;
 
   static final AppDatabase instance = AppDatabase._internal();
 
@@ -31,13 +31,19 @@ class AppDatabase {
         inMemoryDatabasePath,
         version: dbVersion,
         onCreate: _onCreate,
+        onUpgrade: _onUpgrade,
       );
     }
 
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, dbName);
 
-    return openDatabase(path, version: dbVersion, onCreate: _onCreate);
+    return openDatabase(
+      path,
+      version: dbVersion,
+      onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
+    );
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -55,13 +61,30 @@ class AppDatabase {
         cell_voltage_4 REAL,
         temp_bms REAL,
         temp_cells REAL,
-        cycles INTEGER
+        cycles INTEGER,
+        solar_power REAL,
+        solar_yield_today REAL,
+        solar_voltage REAL,
+        solar_current REAL,
+        solar_state INTEGER
       );
     ''');
 
     await db.execute('''
       CREATE INDEX IF NOT EXISTS idx_readings_timestamp ON readings(timestamp);
     ''');
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('ALTER TABLE readings ADD COLUMN solar_power REAL;');
+      await db.execute(
+        'ALTER TABLE readings ADD COLUMN solar_yield_today REAL;',
+      );
+      await db.execute('ALTER TABLE readings ADD COLUMN solar_voltage REAL;');
+      await db.execute('ALTER TABLE readings ADD COLUMN solar_current REAL;');
+      await db.execute('ALTER TABLE readings ADD COLUMN solar_state INTEGER;');
+    }
   }
 
   Future<void> close() async {

@@ -6,6 +6,7 @@ import '../../background/background_service_manager.dart';
 import '../../history/presentation/providers/history_provider.dart';
 import 'widgets/device_scanner_dialog.dart';
 import 'widgets/gpl_license_dialog.dart';
+import 'widgets/victron_scanner_dialog.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -26,7 +27,7 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         children: [
-          _buildSectionHeader('Target Battery BMS', theme),
+          _buildSectionHeader('Target Battery BMS (JBD)', theme),
           Card(
             elevation: 0,
             color: theme.colorScheme.surfaceContainer,
@@ -35,7 +36,7 @@ class SettingsScreen extends ConsumerWidget {
             ),
             child: ListTile(
               leading: const Icon(
-                Icons.bluetooth_searching,
+                Icons.battery_charging_full,
                 color: Color(0xFF3B82F6),
               ),
               title: Text(
@@ -43,19 +44,85 @@ class SettingsScreen extends ConsumerWidget {
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               subtitle: Text(
-                settings.targetDeviceMac ??
-                    'Tap to scan and select target device',
+                settings.targetDeviceMac ?? 'Tap to scan and pair your JBD BMS',
                 style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
               ),
-              trailing: FilledButton.tonal(
-                onPressed: () => _openDeviceScanner(context),
-                child: Text(
-                  settings.targetDeviceMac == null ? 'Pair' : 'Change',
-                ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (settings.hasBmsDevice)
+                    IconButton(
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        size: 20,
+                        color: Colors.grey,
+                      ),
+                      tooltip: 'Disconnect BMS',
+                      onPressed: () {
+                        ref
+                            .read(settingsProvider.notifier)
+                            .removeTargetDevice();
+                      },
+                    ),
+                  FilledButton.tonal(
+                    onPressed: () => _openDeviceScanner(context),
+                    child: Text(
+                      settings.targetDeviceMac == null ? 'Pair' : 'Change',
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
           const SizedBox(height: 20),
+          _buildSectionHeader('Target Solar Charger (Victron MPPT)', theme),
+          Card(
+            elevation: 0,
+            color: theme.colorScheme.surfaceContainer,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: ListTile(
+              leading: const Icon(Icons.solar_power, color: Color(0xFFF59E0B)),
+              title: Text(
+                settings.victronDeviceName ?? 'No Solar Charger Paired',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(
+                settings.victronDeviceMac != null
+                    ? '${settings.victronDeviceMac}\nKey: ••••••••••••••••${settings.victronEncryptionKey?.substring(settings.victronEncryptionKey!.length - 4) ?? ""}'
+                    : 'Tap to scan and configure encryption key',
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (settings.hasVictronDevice)
+                    IconButton(
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        size: 20,
+                        color: Colors.grey,
+                      ),
+                      tooltip: 'Disconnect Solar',
+                      onPressed: () {
+                        ref
+                            .read(settingsProvider.notifier)
+                            .removeVictronDevice();
+                      },
+                    ),
+                  FilledButton.tonal(
+                    onPressed: () => _openVictronScanner(context),
+                    child: Text(
+                      settings.victronDeviceMac == null ? 'Pair' : 'Change',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
           _buildSectionHeader('Background Telemetry Logging', theme),
           Card(
             elevation: 0,
@@ -239,6 +306,10 @@ class SettingsScreen extends ConsumerWidget {
 
   void _openDeviceScanner(BuildContext context) {
     showDialog(context: context, builder: (_) => const DeviceScannerDialog());
+  }
+
+  void _openVictronScanner(BuildContext context) {
+    showDialog(context: context, builder: (_) => const VictronScannerDialog());
   }
 
   void _showLicenseDialog(BuildContext context) {
