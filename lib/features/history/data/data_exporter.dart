@@ -57,4 +57,19 @@ class DataExporter {
       return const [];
     }
   }
+
+  /// Parses CSV or JSON string into a list of [BatteryReading], automatically
+  /// detecting the underlying format.
+  static List<BatteryReading> importFromText(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return const [];
+
+    if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+      final jsonReadings = importFromJson(trimmed);
+      if (jsonReadings.isNotEmpty) {
+        return jsonReadings;
+      }
+    }
+    return importFromCsv(trimmed);
+  }
 }

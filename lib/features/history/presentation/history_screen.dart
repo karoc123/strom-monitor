@@ -230,11 +230,32 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   ) {
     if (readings.isEmpty) return const SizedBox.shrink();
 
+    // For battery SoC/Voltage/Current/Power, filter out pure solar readings if BMS readings exist
+    final relevantReadings =
+        (metric == HistoryMetric.soc ||
+            metric == HistoryMetric.voltage ||
+            metric == HistoryMetric.current ||
+            metric == HistoryMetric.power)
+        ? readings
+              .where(
+                (r) =>
+                    r.cellVoltage1 != null ||
+                    r.tempBms != null ||
+                    r.cycles != null ||
+                    r.soc > 0,
+              )
+              .toList()
+        : readings;
+
+    final targetReadings = relevantReadings.isNotEmpty
+        ? relevantReadings
+        : readings;
+
     double min = double.infinity;
     double max = -double.infinity;
     double sum = 0;
 
-    for (final r in readings) {
+    for (final r in targetReadings) {
       double v;
       switch (metric) {
         case HistoryMetric.soc:
@@ -256,7 +277,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       if (v > max) max = v;
       sum += v;
     }
-    final avg = sum / readings.length;
+    final avg = sum / targetReadings.length;
 
     return Row(
       children: [
@@ -489,7 +510,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     try {
       final pickedFile = await FilePicker.pickFile(
         type: FileType.custom,
-        allowedExtensions: ['csv', 'json'],
+        allowedExtensions: ['csv', 'json', 'txt'],
       );
 
       if (pickedFile == null || pickedFile.path == null) {
@@ -498,11 +519,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
       final file = File(pickedFile.path!);
       final content = await file.readAsString();
-      final isCsv = pickedFile.name.endsWith('.csv');
-
-      final importedReadings = isCsv
-          ? DataExporter.importFromCsv(content)
-          : DataExporter.importFromJson(content);
+      final importedReadings = DataExporter.importFromText(content);
 
       if (importedReadings.isEmpty) {
         if (context.mounted) {

@@ -119,53 +119,62 @@ class BatteryReading {
 
   /// Parse from CSV row
   static BatteryReading? fromCsvRow(String line) {
-    final parts = line.split(',');
-    if (parts.length < 6) return null;
+    final cleanLine = line.trim();
+    if (cleanLine.isEmpty) return null;
+
+    final delimiter = cleanLine.contains(';') ? ';' : ',';
+    final rawParts = cleanLine.split(delimiter);
+    if (rawParts.length < 6) return null;
+
+    final parts = rawParts.map((p) {
+      var s = p.trim();
+      if ((s.startsWith('"') && s.endsWith('"')) ||
+          (s.startsWith("'") && s.endsWith("'"))) {
+        s = s.substring(1, s.length - 1).trim();
+      }
+      return s;
+    }).toList();
+
+    double? parseNum(String? val) {
+      if (val == null || val.isEmpty) return null;
+      final normalized = val.replaceAll(',', '.');
+      return double.tryParse(normalized);
+    }
+
+    int? parseInt(String? val) {
+      if (val == null || val.isEmpty) return null;
+      final d = parseNum(val);
+      return d?.round();
+    }
 
     try {
-      final ts = int.parse(parts[0].trim());
-      final soc = int.parse(parts[2].trim());
-      final volt = double.parse(parts[3].trim());
-      final curr = double.parse(parts[4].trim());
-      final pow = double.parse(parts[5].trim());
+      final ts = parseInt(parts[0]);
+      final soc = parseInt(parts[2]);
+      final volt = parseNum(parts[3]);
+      final curr = parseNum(parts[4]);
+      final pow = parseNum(parts[5]);
 
-      double? c1 = parts.length > 6 && parts[6].isNotEmpty
-          ? double.tryParse(parts[6])
-          : null;
-      double? c2 = parts.length > 7 && parts[7].isNotEmpty
-          ? double.tryParse(parts[7])
-          : null;
-      double? c3 = parts.length > 8 && parts[8].isNotEmpty
-          ? double.tryParse(parts[8])
-          : null;
-      double? c4 = parts.length > 9 && parts[9].isNotEmpty
-          ? double.tryParse(parts[9])
-          : null;
-      double? tb = parts.length > 10 && parts[10].isNotEmpty
-          ? double.tryParse(parts[10])
-          : null;
-      double? tc = parts.length > 11 && parts[11].isNotEmpty
-          ? double.tryParse(parts[11])
-          : null;
-      int? cyc = parts.length > 12 && parts[12].isNotEmpty
-          ? int.tryParse(parts[12])
-          : null;
+      if (ts == null ||
+          soc == null ||
+          volt == null ||
+          curr == null ||
+          pow == null) {
+        return null;
+      }
 
-      double? solP = parts.length > 13 && parts[13].isNotEmpty
-          ? double.tryParse(parts[13])
-          : null;
-      double? solY = parts.length > 14 && parts[14].isNotEmpty
-          ? double.tryParse(parts[14])
-          : null;
-      double? solV = parts.length > 15 && parts[15].isNotEmpty
-          ? double.tryParse(parts[15])
-          : null;
-      double? solI = parts.length > 16 && parts[16].isNotEmpty
-          ? double.tryParse(parts[16])
-          : null;
-      int? solS = parts.length > 17 && parts[17].isNotEmpty
-          ? int.tryParse(parts[17])
-          : null;
+      double? c1 = parts.length > 6 ? parseNum(parts[6]) : null;
+      double? c2 = parts.length > 7 ? parseNum(parts[7]) : null;
+      double? c3 = parts.length > 8 ? parseNum(parts[8]) : null;
+      double? c4 = parts.length > 9 ? parseNum(parts[9]) : null;
+      double? tb = parts.length > 10 ? parseNum(parts[10]) : null;
+      double? tc = parts.length > 11 ? parseNum(parts[11]) : null;
+      int? cyc = parts.length > 12 ? parseInt(parts[12]) : null;
+
+      double? solP = parts.length > 13 ? parseNum(parts[13]) : null;
+      double? solY = parts.length > 14 ? parseNum(parts[14]) : null;
+      double? solV = parts.length > 15 ? parseNum(parts[15]) : null;
+      double? solI = parts.length > 16 ? parseNum(parts[16]) : null;
+      int? solS = parts.length > 17 ? parseInt(parts[17]) : null;
 
       return BatteryReading(
         timestamp: ts,
