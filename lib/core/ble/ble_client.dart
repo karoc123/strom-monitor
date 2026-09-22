@@ -50,6 +50,16 @@ class BleClient {
 
   JbdBasicInfo? _latestBasicInfo;
   List<double> _latestCellVoltages = const [];
+  DateTime? _lastTelemetryReceived;
+  DateTime? get lastTelemetryReceived => _lastTelemetryReceived;
+
+  /// Returns true if connected but no telemetry packets have arrived within 8 seconds.
+  bool get isStale {
+    if (!_currentState.isConnected) return false;
+    if (_lastTelemetryReceived == null) return false;
+    return DateTime.now().difference(_lastTelemetryReceived!) >
+        const Duration(seconds: 8);
+  }
 
   void _updateState(BleState newState) {
     _currentState = newState;
@@ -229,10 +239,11 @@ class BleClient {
 
   void _emitSnapshot() {
     if (_latestBasicInfo != null) {
+      _lastTelemetryReceived = DateTime.now();
       final snapshot = BatterySnapshot(
         basicInfo: _latestBasicInfo!,
         cellVoltages: _latestCellVoltages,
-        timestamp: DateTime.now(),
+        timestamp: _lastTelemetryReceived!,
       );
       if (!_telemetryController.isClosed) {
         _telemetryController.add(snapshot);
@@ -264,6 +275,19 @@ class BleClient {
 
   Future<void> _pollOnce() async {
     if (_writeCharacteristic == null) return;
+
+    // Check for stale connection (no telemetry for > 8s despite active polling)
+    if (isStale) {
+      _updateState(
+        _currentState.copyWith(
+          status: BleConnectionStatus.error,
+          errorMessage: 'Connection lost (heartbeat timeout).',
+        ),
+      );
+      _cleanupConnectionResources();
+      return;
+    }
+
     try {
       // Send 0x03 Basic Info request
       await _writeCharacteristic!.write(
@@ -387,6 +411,7 @@ class BleClient {
     _connectedDevice = null;
     _latestBasicInfo = null;
     _latestCellVoltages = const [];
+    _lastTelemetryReceived = null;
     _reassembler.reset();
   }
 

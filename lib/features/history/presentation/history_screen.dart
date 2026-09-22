@@ -91,6 +91,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                   data: (readings) => HistoryChart(
                     readings: readings,
                     metric: _selectedBatteryMetric,
+                    timeWindow: selectedWindow,
                   ),
                   loading: () => const SizedBox(
                     height: 200,
@@ -139,6 +140,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                   data: (readings) => HistoryChart(
                     readings: readings,
                     metric: _selectedSolarMetric,
+                    timeWindow: selectedWindow,
                   ),
                   loading: () => const SizedBox(
                     height: 200,

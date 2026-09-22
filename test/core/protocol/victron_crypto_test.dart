@@ -60,5 +60,77 @@ void main() {
       );
       expect(decrypted, equals(plainData));
     });
+
+    test('decryptPayload handles empty encryptedData gracefully', () {
+      final key = Uint8List(16);
+      final result = VictronCrypto.decryptPayload(
+        key: key,
+        nonce: 0,
+        encryptedData: Uint8List(0),
+      );
+      expect(result, isEmpty);
+    });
+
+    test(
+      'decryptPayload throws ArgumentError if key length is not 16 bytes',
+      () {
+        expect(
+          () => VictronCrypto.decryptPayload(
+            key: Uint8List(15),
+            nonce: 0,
+            encryptedData: Uint8List(8),
+          ),
+          throwsArgumentError,
+        );
+        expect(
+          () => VictronCrypto.decryptPayload(
+            key: Uint8List(32),
+            nonce: 0,
+            encryptedData: Uint8List(8),
+          ),
+          throwsArgumentError,
+        );
+      },
+    );
+
+    test('AES-CTR processes multi-block streams across 16-byte boundaries', () {
+      final key = Uint8List.fromList(List.generate(16, (i) => i * 7 + 3));
+      const nonce = 0xABCD;
+      // 48 bytes span exactly 3 full AES blocks
+      final multiBlockData = Uint8List.fromList(
+        List.generate(48, (i) => (i * 13) % 256),
+      );
+
+      final encrypted = VictronCrypto.decryptPayload(
+        key: key,
+        nonce: nonce,
+        encryptedData: multiBlockData,
+      );
+      expect(encrypted.length, equals(48));
+      expect(encrypted, isNot(equals(multiBlockData)));
+
+      final decrypted = VictronCrypto.decryptPayload(
+        key: key,
+        nonce: nonce,
+        encryptedData: encrypted,
+      );
+      expect(decrypted, equals(multiBlockData));
+    });
+
+    test('different nonces produce completely different ciphertexts', () {
+      final key = Uint8List(16);
+      final data = Uint8List.fromList([1, 2, 3, 4, 5, 6, 7, 8]);
+      final enc1 = VictronCrypto.decryptPayload(
+        key: key,
+        nonce: 100,
+        encryptedData: data,
+      );
+      final enc2 = VictronCrypto.decryptPayload(
+        key: key,
+        nonce: 101,
+        encryptedData: data,
+      );
+      expect(enc1, isNot(equals(enc2)));
+    });
   });
 }

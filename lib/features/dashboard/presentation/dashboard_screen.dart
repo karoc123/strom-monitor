@@ -17,34 +17,33 @@ class DashboardScreen extends ConsumerStatefulWidget {
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+class _DashboardScreenState extends ConsumerState<DashboardScreen>
+    with WidgetsBindingObserver {
   bool _isBatteryDetailsExpanded = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Auto-connect to target devices if configured
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _autoConnectIfConfigured();
+      ref.read(bleLifecycleCoordinatorProvider).onAppResumed();
     });
   }
 
-  void _autoConnectIfConfigured() {
-    final settings = ref.read(settingsProvider);
-    final bleClient = ref.read(bleClientProvider);
-    if (settings.hasBmsDevice &&
-        !bleClient.currentState.isConnected &&
-        bleClient.currentState.status != BleConnectionStatus.connecting) {
-      _connectToTarget(settings.targetDeviceMac!);
-    }
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
-    if (settings.hasVictronDevice) {
-      ref
-          .read(victronBleClientProvider)
-          .startListening(
-            targetMac: settings.victronDeviceMac!,
-            encryptionKey: settings.victronEncryptionKey!,
-          );
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.read(bleLifecycleCoordinatorProvider).onAppResumed();
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      ref.read(bleLifecycleCoordinatorProvider).onAppPaused();
     }
   }
 
@@ -104,17 +103,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          if (settings.targetDeviceMac != null) {
-            await _connectToTarget(settings.targetDeviceMac!);
-          }
-          if (settings.hasVictronDevice) {
-            await ref
-                .read(victronBleClientProvider)
-                .startListening(
-                  targetMac: settings.victronDeviceMac!,
-                  encryptionKey: settings.victronEncryptionKey!,
-                );
-          }
+          await ref.read(bleLifecycleCoordinatorProvider).onAppResumed();
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),

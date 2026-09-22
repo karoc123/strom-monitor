@@ -24,15 +24,40 @@ class VictronBleClient {
   bool _isListening = false;
   bool get isListening => _isListening;
 
+  bool get isStale {
+    if (_latestData == null) return true;
+    return DateTime.now().difference(_latestData!.timestamp) >
+        const Duration(seconds: 15);
+  }
+
   /// Starts listening for BLE advertisements from the configured Victron device.
   Future<void> startListening({
     required String targetMac,
     required String encryptionKey,
+    bool forceRestart = false,
   }) async {
     _targetMac = targetMac;
     _encryptionKey = encryptionKey;
 
-    if (_isListening) return;
+    if (_isListening && !forceRestart) {
+      // If we intended to be listening, but the scan stopped (e.g. Android scan limits/timeout),
+      // restart the scan!
+      if (!FlutterBluePlus.isScanningNow) {
+        try {
+          await FlutterBluePlus.startScan(
+            timeout: const Duration(minutes: 60),
+            androidUsesFineLocation: false,
+            continuousUpdates: true,
+          );
+        } catch (_) {}
+      }
+      return;
+    }
+
+    if (forceRestart) {
+      await stopListening();
+    }
+
     _isListening = true;
 
     // Check adapter state
@@ -85,12 +110,17 @@ class VictronBleClient {
     }
   }
 
-  /// Stops the active advertisement listener.
+  /// Stops the active advertisement listener and cancels active BLE scan.
   Future<void> stopListening() async {
     _isListening = false;
     _latestData = null;
     await _scanSubscription?.cancel();
     _scanSubscription = null;
+    try {
+      if (FlutterBluePlus.isScanningNow) {
+        await FlutterBluePlus.stopScan();
+      }
+    } catch (_) {}
   }
 
   /// One-shot BLE scan query designed for the WorkManager background task.

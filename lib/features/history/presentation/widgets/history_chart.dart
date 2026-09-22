@@ -4,13 +4,20 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/database/models/battery_reading.dart';
 import '../../data/daily_yield_aggregator.dart';
+import '../../domain/time_window.dart';
 import '../providers/history_provider.dart';
 
 class HistoryChart extends StatelessWidget {
   final List<BatteryReading> readings;
   final HistoryMetric metric;
+  final TimeWindow? timeWindow;
 
-  const HistoryChart({super.key, required this.readings, required this.metric});
+  const HistoryChart({
+    super.key,
+    required this.readings,
+    required this.metric,
+    this.timeWindow,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -22,6 +29,13 @@ class HistoryChart extends StatelessWidget {
 
     if (metric == HistoryMetric.solarYield) {
       return _buildDailyYieldBarChart(context, theme);
+    }
+
+    if (metric == HistoryMetric.solarPower) {
+      final hasSolarData = readings.any((r) => r.solarPower != null);
+      if (!hasSolarData) {
+        return _buildSolarEmptyState(theme);
+      }
     }
 
     return _buildLineChart(context, theme);
@@ -41,6 +55,30 @@ class HistoryChart extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               'No data recorded for this time range',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSolarEmptyState(ThemeData theme) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 48),
+        child: Column(
+          children: [
+            Icon(
+              Icons.solar_power_outlined,
+              size: 48,
+              color: Colors.grey.withValues(alpha: 0.4),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No solar power recorded for this time range',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -237,10 +275,41 @@ class HistoryChart extends StatelessWidget {
   }
 
   Widget _buildLineChart(BuildContext context, ThemeData theme) {
+    final sortedReadings = List<BatteryReading>.from(readings)
+      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+    final int windowStartMs;
+    final int windowEndMs;
+    if (timeWindow != null && timeWindow != TimeWindow.all) {
+      windowStartMs = timeWindow!.getStartTimestampMs();
+      windowEndMs = DateTime.now().millisecondsSinceEpoch;
+    } else {
+      windowStartMs = sortedReadings.first.timestamp;
+      windowEndMs = math.max(
+        sortedReadings.last.timestamp,
+        windowStartMs + 3600 * 1000,
+      );
+    }
+
+    final startDt = DateTime.fromMillisecondsSinceEpoch(windowStartMs);
+    final midnightStartDt = DateTime(startDt.year, startDt.month, startDt.day);
+    final baseTimestampMs = midnightStartDt.millisecondsSinceEpoch;
+
+    final minX = (windowStartMs - baseTimestampMs) / 1000.0;
+    final maxX = math.max(
+      (windowEndMs - baseTimestampMs) / 1000.0,
+      minX + 60.0,
+    );
+    final totalSpanSeconds = maxX - minX;
+
     final spots = <FlSpot>[];
-    for (int i = 0; i < readings.length; i++) {
-      final r = readings[i];
-      double val;
+    BatteryReading? prevReading;
+
+    for (int i = 0; i < sortedReadings.length; i++) {
+      final r = sortedReadings[i];
+      final x = (r.timestamp - baseTimestampMs) / 1000.0;
+
+      double? val;
       switch (metric) {
         case HistoryMetric.soc:
           val = r.soc.toDouble();
@@ -255,14 +324,46 @@ class HistoryChart extends StatelessWidget {
           val = r.power;
           break;
         case HistoryMetric.solarPower:
-          val = r.solarPower ?? 0.0;
+          val = r.solarPower;
           break;
         case HistoryMetric.solarYield:
-          val = r.solarYieldToday ?? 0.0;
+          val = r.solarYieldToday;
           break;
       }
-      spots.add(FlSpot(i.toDouble(), val));
+
+      if (val == null) {
+        if (spots.isNotEmpty && !spots.last.isNull()) {
+          spots.add(FlSpot.nullSpot);
+        }
+        continue;
+      }
+
+      // Break line across disconnections/missing data > 20 minutes (1200s)
+      if (prevReading != null) {
+        final gapSeconds = (r.timestamp - prevReading.timestamp) / 1000.0;
+        if (gapSeconds > 1200 && spots.isNotEmpty && !spots.last.isNull()) {
+          spots.add(FlSpot.nullSpot);
+        }
+      }
+
+      spots.add(FlSpot(x, val));
+      prevReading = r;
     }
+
+    while (spots.isNotEmpty && spots.last.isNull()) {
+      spots.removeLast();
+    }
+
+    final validSpots = spots.where((s) => !s.isNull()).toList();
+    if (validSpots.isEmpty) {
+      return metric == HistoryMetric.solarPower
+          ? _buildSolarEmptyState(theme)
+          : _buildEmptyState(theme);
+    }
+
+    final yConfig = _calculateYAxisConfig(metric, validSpots);
+    final xAxisConfig = _calculateXAxisConfig(timeWindow, totalSpanSeconds);
+    final xInterval = xAxisConfig.interval;
 
     Color lineColor;
     switch (metric) {
@@ -297,14 +398,38 @@ class HistoryChart extends StatelessWidget {
         ),
         child: LineChart(
           LineChartData(
+            minX: minX,
+            maxX: maxX,
+            minY: yConfig.minY,
+            maxY: yConfig.maxY,
             gridData: FlGridData(
               show: true,
-              drawVerticalLine: false,
-              horizontalInterval: _calculateGridInterval(),
+              drawVerticalLine: true,
+              horizontalInterval: yConfig.interval,
+              verticalInterval: xInterval,
               getDrawingHorizontalLine: (value) => FlLine(
                 color: theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
                 strokeWidth: 1,
               ),
+              getDrawingVerticalLine: (value) {
+                final diff = (value % xInterval).abs();
+                if (diff > 1.0 && (xInterval - diff) > 1.0) {
+                  return const FlLine(color: Colors.transparent);
+                }
+                final dt = DateTime.fromMillisecondsSinceEpoch(
+                  baseTimestampMs + (value * 1000).round(),
+                );
+                final isMidnight = dt.hour == 0 && dt.minute == 0;
+                return FlLine(
+                  color: isMidnight
+                      ? theme.colorScheme.outline.withValues(alpha: 0.35)
+                      : theme.colorScheme.outlineVariant.withValues(
+                          alpha: 0.15,
+                        ),
+                  strokeWidth: isMidnight ? 1.5 : 1,
+                  dashArray: isMidnight ? null : const [4, 4],
+                );
+              },
             ),
             titlesData: FlTitlesData(
               show: true,
@@ -317,20 +442,66 @@ class HistoryChart extends StatelessWidget {
               bottomTitles: AxisTitles(
                 sideTitles: SideTitles(
                   showTitles: true,
-                  reservedSize: 30,
-                  interval: (readings.length / 4).clamp(1.0, 100.0),
+                  reservedSize: 36,
+                  interval: xInterval,
                   getTitlesWidget: (value, meta) {
-                    final index = value.toInt();
-                    if (index < 0 || index >= readings.length) {
+                    final diff = (value % xInterval).abs();
+                    if (diff > 1.0 && (xInterval - diff) > 1.0) {
                       return const SizedBox.shrink();
                     }
+
                     final dt = DateTime.fromMillisecondsSinceEpoch(
-                      readings[index].timestamp,
+                      baseTimestampMs + (value * 1000).round(),
                     );
+
+                    if (xAxisConfig.is24h) {
+                      final isMidnight = dt.hour == 0 && dt.minute == 0;
+                      if (isMidnight) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 6.0),
+                          child: Text(
+                            '00:00\n${DateFormat('dd.MM').format(dt)}',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        );
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 6.0),
+                        child: Text(
+                          DateFormat('HH:mm').format(dt),
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            fontSize: 9,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      );
+                    }
+
+                    if (xAxisConfig.is7d) {
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 6.0),
+                        child: Text(
+                          DateFormat('E\ndd.MM').format(dt),
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      );
+                    }
+
                     return Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
+                      padding: const EdgeInsets.only(top: 6.0),
                       child: Text(
-                        DateFormat('HH:mm\ndd.MM').format(dt),
+                        DateFormat('dd.MM').format(dt),
                         textAlign: TextAlign.center,
                         style: theme.textTheme.labelSmall?.copyWith(
                           fontSize: 9,
@@ -345,11 +516,18 @@ class HistoryChart extends StatelessWidget {
                 sideTitles: SideTitles(
                   showTitles: true,
                   reservedSize: 42,
+                  interval: yConfig.interval,
                   getTitlesWidget: (value, meta) {
+                    if (value < yConfig.minY || value > yConfig.maxY) {
+                      return const SizedBox.shrink();
+                    }
+                    final formatted = metric == HistoryMetric.voltage
+                        ? value.toStringAsFixed(1)
+                        : (value >= 1000
+                              ? '${(value / 1000).toStringAsFixed(1)}k'
+                              : value.toStringAsFixed(0));
                     return Text(
-                      value.toStringAsFixed(
-                        metric == HistoryMetric.voltage ? 1 : 0,
-                      ),
+                      formatted,
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -364,14 +542,16 @@ class HistoryChart extends StatelessWidget {
                 getTooltipColor: (_) => theme.colorScheme.surfaceContainerHigh,
                 getTooltipItems: (touchedSpots) {
                   return touchedSpots.map((spot) {
-                    final index = spot.x.toInt();
-                    if (index < 0 || index >= readings.length) return null;
-                    final reading = readings[index];
-                    final timeStr = DateFormat('dd.MM HH:mm').format(
-                      DateTime.fromMillisecondsSinceEpoch(reading.timestamp),
+                    if (spot.isNull()) return null;
+                    final dt = DateTime.fromMillisecondsSinceEpoch(
+                      baseTimestampMs + (spot.x * 1000).round(),
+                    );
+                    final timeStr = DateFormat('dd.MM HH:mm').format(dt);
+                    final valFormatted = spot.y.toStringAsFixed(
+                      metric == HistoryMetric.voltage ? 2 : 1,
                     );
                     return LineTooltipItem(
-                      '${spot.y.toStringAsFixed(2)} ${metric.unit}\n$timeStr',
+                      '$valFormatted ${metric.unit}\n$timeStr',
                       TextStyle(
                         color: theme.colorScheme.onSurface,
                         fontWeight: FontWeight.bold,
@@ -386,11 +566,15 @@ class HistoryChart extends StatelessWidget {
               LineChartBarData(
                 spots: spots,
                 isCurved: true,
-                curveSmoothness: 0.2,
+                curveSmoothness: 0.15,
+                preventCurveOverShooting: true,
                 color: lineColor,
-                barWidth: 3,
+                barWidth: 2.5,
                 isStrokeCapRound: true,
-                dotData: const FlDotData(show: false),
+                dotData: FlDotData(
+                  show: validSpots.length <= 3,
+                  checkToShowDot: (spot, barData) => !spot.isNull(),
+                ),
                 belowBarData: BarAreaData(
                   show: true,
                   gradient: LinearGradient(
@@ -410,19 +594,82 @@ class HistoryChart extends StatelessWidget {
     );
   }
 
-  double? _calculateGridInterval() {
-    switch (metric) {
-      case HistoryMetric.soc:
-        return 20.0;
-      case HistoryMetric.voltage:
-        return 0.5;
-      case HistoryMetric.current:
-        return 2.0;
-      case HistoryMetric.power:
-      case HistoryMetric.solarPower:
-        return 20.0;
-      case HistoryMetric.solarYield:
-        return 200.0;
+  ({double interval, bool is24h, bool is7d}) _calculateXAxisConfig(
+    TimeWindow? window,
+    double totalSpanSeconds,
+  ) {
+    if (window == TimeWindow.hours24 ||
+        (window == null && totalSpanSeconds <= 90000)) {
+      return (interval: 14400.0, is24h: true, is7d: false); // 4 hours
     }
+    if (window == TimeWindow.days7 ||
+        (window == null && totalSpanSeconds <= 86400 * 8)) {
+      return (interval: 86400.0, is24h: false, is7d: true); // 1 day
+    }
+    return (interval: 5 * 86400.0, is24h: false, is7d: false); // 5 days
+  }
+
+  ({double minY, double maxY, double interval}) _calculateYAxisConfig(
+    HistoryMetric metric,
+    List<FlSpot> validSpots,
+  ) {
+    if (validSpots.isEmpty) {
+      return (minY: 0.0, maxY: 100.0, interval: 20.0);
+    }
+
+    final values = validSpots.map((s) => s.y).toList();
+    final dataMin = values.reduce(math.min);
+    final dataMax = values.reduce(math.max);
+
+    switch (metric) {
+      case HistoryMetric.solarPower:
+        final maxY = _calculateSolarMaxY(dataMax);
+        final interval = _calculateSolarGridInterval(maxY);
+        return (minY: 0.0, maxY: maxY, interval: interval);
+
+      case HistoryMetric.soc:
+        return (minY: 0.0, maxY: 100.0, interval: 20.0);
+
+      case HistoryMetric.voltage:
+        final minY = (dataMin - 0.2).clamp(10.0, 16.0);
+        final maxY = (dataMax + 0.2).clamp(11.0, 16.0);
+        return (minY: minY, maxY: maxY, interval: 0.5);
+
+      case HistoryMetric.current:
+        final minY = math.min(dataMin * 1.15, 0.0);
+        final maxY = math.max(dataMax * 1.15, 2.0);
+        final span = maxY - minY;
+        final interval = span > 40 ? 10.0 : (span > 15 ? 5.0 : 2.0);
+        return (minY: minY, maxY: maxY, interval: interval);
+
+      case HistoryMetric.power:
+        final minY = math.min(dataMin * 1.15, 0.0);
+        final maxY = math.max(dataMax * 1.15, 20.0);
+        final span = maxY - minY;
+        final interval = span > 400 ? 100.0 : (span > 150 ? 50.0 : 20.0);
+        return (minY: minY, maxY: maxY, interval: interval);
+
+      case HistoryMetric.solarYield:
+        final maxY = math.max(dataMax * 1.2, 100.0);
+        final interval = _calculateBarGridInterval(maxY);
+        return (minY: 0.0, maxY: maxY, interval: interval);
+    }
+  }
+
+  double _calculateSolarMaxY(double dataMax) {
+    if (dataMax <= 80) return 100.0;
+    if (dataMax <= 170) return 200.0;
+    if (dataMax <= 260) return 300.0;
+    if (dataMax <= 420) return 500.0;
+    if (dataMax <= 700) return 800.0;
+    return ((dataMax * 1.15) / 100).ceil() * 100.0;
+  }
+
+  double _calculateSolarGridInterval(double maxY) {
+    if (maxY > 800) return 200.0;
+    if (maxY > 400) return 100.0;
+    if (maxY > 200) return 50.0;
+    if (maxY > 100) return 25.0;
+    return 20.0;
   }
 }
