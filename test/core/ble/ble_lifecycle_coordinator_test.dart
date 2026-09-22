@@ -105,56 +105,50 @@ void main() {
       },
     );
 
-    test(
-      'onAppResumed re-connects BMS and restarts Victron scan with forceRestart',
-      () async {
-        final coordinator = BleLifecycleCoordinator(
-          bleClient: fakeBleClient,
-          victronClient: fakeVictronClient,
-          getSettings: () => currentSettings,
-        );
+    test('onAppResumed re-connects BMS and restarts Victron scan with forceRestart', () async {
+      final coordinator = BleLifecycleCoordinator(
+        bleClient: fakeBleClient,
+        victronClient: fakeVictronClient,
+        getSettings: () => currentSettings,
+      );
 
-        await coordinator.onAppResumed();
+      await coordinator.onAppResumed();
 
-        // Victron scan restarted fresh
-        expect(fakeVictronClient.startListeningCalled, isTrue);
-        expect(fakeVictronClient.targetMac, '11:22:33:44:55:66');
-        expect(
-          fakeVictronClient.encryptionKey,
-          '0123456789abcdef0123456789abcdef',
-        );
-        expect(fakeVictronClient.forceRestart, isTrue);
+      // Victron scan restarted fresh
+      expect(fakeVictronClient.startListeningCalled, isTrue);
+      expect(fakeVictronClient.targetMac, '11:22:33:44:55:66');
+      expect(
+        fakeVictronClient.encryptionKey,
+        '0123456789abcdef0123456789abcdef',
+      );
+      expect(fakeVictronClient.forceRestart, isTrue);
 
-        // BMS connection established and polling started
-        expect(fakeBleClient.connectCalled, isTrue);
-        expect(fakeBleClient.connectedMac, 'AA:BB:CC:DD:EE:FF');
-        expect(fakeBleClient.startPollingCalled, isTrue);
-      },
-    );
+      // BMS connection established and polling started
+      expect(fakeBleClient.connectCalled, isTrue);
+      expect(fakeBleClient.connectedMac, 'AA:BB:CC:DD:EE:FF');
+      expect(fakeBleClient.startPollingCalled, isTrue);
+    });
 
-    test(
-      'onAppResumed resumes polling without reconnecting if BMS is healthy and not stale',
-      () async {
-        fakeBleClient.setMockState(
-          const BleState(status: BleConnectionStatus.connected),
-        );
-        fakeBleClient.setMockIsStale(false);
+    test('onAppResumed resumes polling without reconnecting if BMS is healthy and not stale', () async {
+      fakeBleClient.setMockState(
+        const BleState(status: BleConnectionStatus.connected),
+      );
+      fakeBleClient.setMockIsStale(false);
 
-        final coordinator = BleLifecycleCoordinator(
-          bleClient: fakeBleClient,
-          victronClient: fakeVictronClient,
-          getSettings: () => currentSettings,
-        );
+      final coordinator = BleLifecycleCoordinator(
+        bleClient: fakeBleClient,
+        victronClient: fakeVictronClient,
+        getSettings: () => currentSettings,
+      );
 
-        await coordinator.onAppResumed();
+      await coordinator.onAppResumed();
 
-        // Did not disconnect or reconnect
-        expect(fakeBleClient.disconnectCalled, isFalse);
-        expect(fakeBleClient.connectCalled, isFalse);
-        // Directly resumed polling
-        expect(fakeBleClient.startPollingCalled, isTrue);
-      },
-    );
+      // Did not disconnect or reconnect
+      expect(fakeBleClient.disconnectCalled, isFalse);
+      expect(fakeBleClient.connectCalled, isFalse);
+      // Directly resumed polling
+      expect(fakeBleClient.startPollingCalled, isTrue);
+    });
 
     test(
       'onAppResumed disconnects and reconnects when BMS connection is stale',

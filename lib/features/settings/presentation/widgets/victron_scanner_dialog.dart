@@ -1,7 +1,9 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../core/ble/ble_device_info.dart';
 import '../../../../core/protocol/victron/victron_crypto.dart';
 import '../../../../core/protocol/victron/victron_mppt_parser.dart';
@@ -149,9 +151,8 @@ class _VictronScannerDialogState extends ConsumerState<VictronScannerDialog> {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(
-                            0xFFF59E0B,
-                          ).withValues(alpha: 0.15),
+                          color: const Color(0xFFF59E0B)
+                              .withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: const Text(
@@ -327,8 +328,7 @@ class _VictronScannerDialogState extends ConsumerState<VictronScannerDialog> {
 
     if (parsedKey == null) {
       setState(() {
-        _errorMessage =
-            'Invalid key format. Please enter exactly 32 hexadecimal characters (0-9, a-f).';
+        _errorMessage = 'Invalid key format. Please enter exactly 32 hexadecimal characters (0-9, a-f).';
       });
       return;
     }

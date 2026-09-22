@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:workmanager/workmanager.dart';
+
 import '../../core/ble/ble_client.dart';
 import '../../core/ble/victron_ble_client.dart';
 import '../../core/database/app_database.dart';
@@ -23,7 +24,7 @@ void callbackDispatcher() {
 
       if (!settings.hasBmsDevice && !settings.hasVictronDevice) {
         // No devices configured
-        return Future.value(true);
+        return true;
       }
 
       // Query BLE telemetry for both BMS and Victron in parallel
@@ -49,7 +50,7 @@ void callbackDispatcher() {
       // If BMS is configured, but query failed (bmsSnapshot == null),
       // skip recording to prevent recording fake/stale 0% SoC readings.
       if (settings.hasBmsDevice && bmsSnapshot == null) {
-        return Future.value(true);
+        return true;
       }
 
       if (bmsSnapshot != null || solarData != null) {
@@ -94,10 +95,10 @@ void callbackDispatcher() {
         }
       }
 
-      return Future.value(true);
+      return true;
     } catch (_) {
       // Abort silently on failure or out of range, next cycle will re-attempt
-      return Future.value(true);
+      return true;
     }
   });
 }

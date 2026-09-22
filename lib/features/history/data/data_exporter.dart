@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import '../../../core/database/models/battery_reading.dart';
 
 /// Service responsible for serializing and deserializing historical readings

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'app.dart';
 import 'core/providers/settings_provider.dart';
 import 'features/background/background_service_manager.dart';

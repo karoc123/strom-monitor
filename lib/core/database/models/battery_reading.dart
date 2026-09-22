@@ -108,9 +108,8 @@ class BatteryReading {
 
   /// Convert to CSV row
   String toCsvRow() {
-    final iso = DateTime.fromMillisecondsSinceEpoch(
-      timestamp,
-    ).toIso8601String();
+    final iso = DateTime.fromMillisecondsSinceEpoch(timestamp)
+        .toIso8601String();
     return '$timestamp,$iso,$soc,$voltage,$current,$power,'
         '${cellVoltage1 ?? ""},${cellVoltage2 ?? ""},${cellVoltage3 ?? ""},${cellVoltage4 ?? ""},'
         '${tempBms ?? ""},${tempCells ?? ""},${cycles ?? ""},'

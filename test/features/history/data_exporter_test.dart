@@ -173,81 +173,77 @@ void main() {
       await db.close();
     });
 
-    test(
-      'Full cycle: insert readings -> export -> clear DB -> import back -> downsample preserves ~70% SoC',
-      () async {
-        // 1. Create a series of realistic telemetry points (BMS ~70% SoC mixed with standalone solar points)
-        final initialReadings = <BatteryReading>[];
+    test('Full cycle: insert readings -> export -> clear DB -> import back -> downsample preserves ~70% SoC', () async {
+      // 1. Create a series of realistic telemetry points (BMS ~70% SoC mixed with standalone solar points)
+      final initialReadings = <BatteryReading>[];
 
-        for (int i = 0; i < 30; i++) {
-          final isSolarOnly =
-              (i % 3 != 0); // 2 out of 3 readings are solar-only
-          initialReadings.add(
-            BatteryReading(
-              timestamp: 1700000000000 + (i * 60000),
-              // BMS points have ~70% SoC; pure solar points have soc 0
-              soc: isSolarOnly ? 0 : 70 + (i ~/ 10),
-              voltage: isSolarOnly ? 13.5 : 13.35,
-              current: isSolarOnly ? 0.0 : 2.5,
-              power: isSolarOnly ? 0.0 : 33.375,
-              cellVoltage1: isSolarOnly ? null : 3.338,
-              cellVoltage2: isSolarOnly ? null : 3.337,
-              cellVoltage3: isSolarOnly ? null : 3.338,
-              cellVoltage4: isSolarOnly ? null : 3.337,
-              tempBms: isSolarOnly ? null : 22.0,
-              tempCells: isSolarOnly ? null : 21.5,
-              cycles: isSolarOnly ? null : 10,
-              solarPower: 85.0 + i,
-              solarYieldToday: 1200.0 + (i * 10),
-              solarVoltage: 19.5,
-              solarCurrent: 4.3,
-              solarState: 3,
-            ),
-          );
-        }
-
-        // 2. Insert into database
-        await dao.insertReadingsBatch(initialReadings);
-        expect(await dao.countReadings(), equals(30));
-
-        // 3. Export to CSV
-        final allDbReadings = await dao.getAllReadings();
-        final csvExport = DataExporter.exportToCsv(allDbReadings);
-
-        // 4. Clear Database (User deletes data)
-        await dao.clearAll();
-        expect(await dao.countReadings(), equals(0));
-
-        // 5. Re-Import Backup
-        final importedReadings = DataExporter.importFromText(csvExport);
-        expect(importedReadings.length, equals(30));
-        await dao.insertReadingsBatch(importedReadings);
-        expect(await dao.countReadings(), equals(30));
-
-        // 6. Query from DB and verify downsampling
-        final retrieved = await dao.getReadingsBetween(
-          1700000000000,
-          1700000000000 + (30 * 60000),
+      for (int i = 0; i < 30; i++) {
+        final isSolarOnly = (i % 3 != 0); // 2 out of 3 readings are solar-only
+        initialReadings.add(
+          BatteryReading(
+            timestamp: 1700000000000 + (i * 60000),
+            // BMS points have ~70% SoC; pure solar points have soc 0
+            soc: isSolarOnly ? 0 : 70 + (i ~/ 10),
+            voltage: isSolarOnly ? 13.5 : 13.35,
+            current: isSolarOnly ? 0.0 : 2.5,
+            power: isSolarOnly ? 0.0 : 33.375,
+            cellVoltage1: isSolarOnly ? null : 3.338,
+            cellVoltage2: isSolarOnly ? null : 3.337,
+            cellVoltage3: isSolarOnly ? null : 3.338,
+            cellVoltage4: isSolarOnly ? null : 3.337,
+            tempBms: isSolarOnly ? null : 22.0,
+            tempCells: isSolarOnly ? null : 21.5,
+            cycles: isSolarOnly ? null : 10,
+            solarPower: 85.0 + i,
+            solarYieldToday: 1200.0 + (i * 10),
+            solarVoltage: 19.5,
+            solarCurrent: 4.3,
+            solarState: 3,
+          ),
         );
-        expect(retrieved.length, equals(30));
+      }
 
-        // Downsample for charts (target 5 points)
-        final downsampled = Downsampler.downsampleByBuckets(
-          retrieved,
-          targetCount: 5,
+      // 2. Insert into database
+      await dao.insertReadingsBatch(initialReadings);
+      expect(await dao.countReadings(), equals(30));
+
+      // 3. Export to CSV
+      final allDbReadings = await dao.getAllReadings();
+      final csvExport = DataExporter.exportToCsv(allDbReadings);
+
+      // 4. Clear Database (User deletes data)
+      await dao.clearAll();
+      expect(await dao.countReadings(), equals(0));
+
+      // 5. Re-Import Backup
+      final importedReadings = DataExporter.importFromText(csvExport);
+      expect(importedReadings.length, equals(30));
+      await dao.insertReadingsBatch(importedReadings);
+      expect(await dao.countReadings(), equals(30));
+
+      // 6. Query from DB and verify downsampling
+      final retrieved = await dao.getReadingsBetween(
+        1700000000000,
+        1700000000000 + (30 * 60000),
+      );
+      expect(retrieved.length, equals(30));
+
+      // Downsample for charts (target 5 points)
+      final downsampled = Downsampler.downsampleByBuckets(
+        retrieved,
+        targetCount: 5,
+      );
+      expect(downsampled.length, equals(5));
+
+      // CRITICAL CHECK: SoC must NOT be diluted to 23% or 33% by solar-only 0s!
+      for (final bucket in downsampled) {
+        expect(
+          bucket.soc,
+          inInclusiveRange(69, 73),
+          reason: 'SoC should remain ~70% and not drop to ~23% or ~33%',
         );
-        expect(downsampled.length, equals(5));
-
-        // CRITICAL CHECK: SoC must NOT be diluted to 23% or 33% by solar-only 0s!
-        for (final bucket in downsampled) {
-          expect(
-            bucket.soc,
-            inInclusiveRange(69, 73),
-            reason: 'SoC should remain ~70% and not drop to ~23% or ~33%',
-          );
-          expect(bucket.solarPower, isNotNull);
-        }
-      },
-    );
+        expect(bucket.solarPower, isNotNull);
+      }
+    });
   });
 }

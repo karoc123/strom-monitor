@@ -1,5 +1,7 @@
 import 'dart:async';
+
 import 'package:flutter/widgets.dart';
+
 import '../../features/settings/domain/app_settings.dart';
 import 'ble_client.dart';
 import 'victron_ble_client.dart';

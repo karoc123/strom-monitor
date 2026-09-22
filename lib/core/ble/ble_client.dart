@@ -1,5 +1,7 @@
 import 'dart:async';
+
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+
 import '../protocol/jbd_command.dart';
 import '../protocol/jbd_frame_builder.dart';
 import '../protocol/jbd_frame_reassembler.dart';

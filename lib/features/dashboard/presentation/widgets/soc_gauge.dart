@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 /// Circular/Arc gauge visualizing State of Charge (SoC).

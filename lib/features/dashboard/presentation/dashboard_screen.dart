@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../core/ble/ble_connection_state.dart';
 import '../../../core/providers/ble_provider.dart';
 import '../../../core/providers/settings_provider.dart';
@@ -488,9 +489,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: Theme.of(
-            context,
-          ).colorScheme.outlineVariant.withValues(alpha: 0.3),
+          color: Theme.of(context).colorScheme.outlineVariant
+              .withValues(alpha: 0.3),
         ),
       ),
       child: Padding(

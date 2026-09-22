@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../../core/protocol/victron/victron_mppt_data.dart';
 
 /// Card widget displaying real-time measured telemetry from a Victron SmartSolar MPPT.

@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../core/database/models/battery_reading.dart';
 import '../../../../core/providers/database_provider.dart';
 import '../../data/downsampler.dart';
@@ -41,13 +42,31 @@ extension HistoryMetricExtension on HistoryMetric {
   }
 }
 
-final selectedTimeWindowProvider = StateProvider<TimeWindow>(
-  (ref) => TimeWindow.hours24,
-);
+class SelectedTimeWindowNotifier extends Notifier<TimeWindow> {
+  @override
+  TimeWindow build() => TimeWindow.hours24;
 
-final selectedMetricProvider = StateProvider<HistoryMetric>(
-  (ref) => HistoryMetric.soc,
-);
+  @override
+  set state(TimeWindow value) => super.state = value;
+}
+
+final selectedTimeWindowProvider =
+    NotifierProvider<SelectedTimeWindowNotifier, TimeWindow>(
+      SelectedTimeWindowNotifier.new,
+    );
+
+class SelectedMetricNotifier extends Notifier<HistoryMetric> {
+  @override
+  HistoryMetric build() => HistoryMetric.soc;
+
+  @override
+  set state(HistoryMetric value) => super.state = value;
+}
+
+final selectedMetricProvider =
+    NotifierProvider<SelectedMetricNotifier, HistoryMetric>(
+      SelectedMetricNotifier.new,
+    );
 
 final historyReadingsProvider =
     FutureProvider.autoDispose<List<BatteryReading>>((ref) async {

@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../features/settings/data/settings_repository.dart';
 import '../../features/settings/domain/app_settings.dart';
 
@@ -8,10 +9,14 @@ final sharedPreferencesRepositoryProvider = Provider<SettingsRepository>((ref) {
   );
 });
 
-class SettingsNotifier extends StateNotifier<AppSettings> {
-  final SettingsRepository _repository;
+class SettingsNotifier extends Notifier<AppSettings> {
+  SettingsRepository get _repository =>
+      ref.read(sharedPreferencesRepositoryProvider);
 
-  SettingsNotifier(this._repository) : super(_repository.loadSettings());
+  @override
+  AppSettings build() {
+    return _repository.loadSettings();
+  }
 
   Future<void> setTargetDevice({
     required String mac,
@@ -64,9 +69,6 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   }
 }
 
-final settingsProvider = StateNotifierProvider<SettingsNotifier, AppSettings>((
-  ref,
-) {
-  final repo = ref.watch(sharedPreferencesRepositoryProvider);
-  return SettingsNotifier(repo);
-});
+final settingsProvider = NotifierProvider<SettingsNotifier, AppSettings>(
+  SettingsNotifier.new,
+);

@@ -31,34 +31,16 @@ void main() {
       await expectLater(BackgroundServiceManager.cancelAll(), completes);
     });
 
-    test(
-      'updateSchedule with non-positive intervals calls cancellation path gracefully',
-      () async {
-        await expectLater(
-          BackgroundServiceManager.updateSchedule(0),
-          completes,
-        );
-        await expectLater(
-          BackgroundServiceManager.updateSchedule(-5),
-          completes,
-        );
-      },
-    );
+    test('updateSchedule with non-positive intervals calls cancellation path gracefully', () async {
+      await expectLater(BackgroundServiceManager.updateSchedule(0), completes);
+      await expectLater(BackgroundServiceManager.updateSchedule(-5), completes);
+    });
 
-    test(
-      'updateSchedule with positive intervals executes and handles platform gracefully',
-      () async {
-        // Below 15 min (should clamp to 15 without throwing)
-        await expectLater(
-          BackgroundServiceManager.updateSchedule(5),
-          completes,
-        );
-        // Above 15 min
-        await expectLater(
-          BackgroundServiceManager.updateSchedule(30),
-          completes,
-        );
-      },
-    );
+    test('updateSchedule with positive intervals executes and handles platform gracefully', () async {
+      // Below 15 min (should clamp to 15 without throwing)
+      await expectLater(BackgroundServiceManager.updateSchedule(5), completes);
+      // Above 15 min
+      await expectLater(BackgroundServiceManager.updateSchedule(30), completes);
+    });
   });
 }

@@ -1,7 +1,6 @@
-// ignore_for_file: depend_on_referenced_packages
-
 import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jbd_battery_monitor/features/history/data/data_exporter.dart';
@@ -13,10 +12,7 @@ final class _FakePlatformFile extends PlatformFile {
   final Uri _uri;
   final String? _path;
 
-  _FakePlatformFile({required String name, required Uri uri, String? path})
-    : _name = name,
-      _uri = uri,
-      _path = path;
+  _FakePlatformFile({required this._name, required this._uri, this._path});
 
   @override
   String get name => _name;

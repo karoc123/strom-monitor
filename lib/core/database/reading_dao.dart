@@ -1,4 +1,5 @@
 import 'package:sqflite/sqflite.dart';
+
 import 'app_database.dart';
 import 'models/battery_reading.dart';
 

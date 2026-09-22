@@ -1,9 +1,11 @@
 import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+
 import '../../../../core/database/models/battery_reading.dart';
 import '../../../../core/providers/database_provider.dart';
 import '../data/data_exporter.dart';
@@ -420,9 +422,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               children: [
                 Text(
                   'Export Telemetry Data',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(context).textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 const Text(
@@ -501,9 +502,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       );
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Export failed: $e')));
       }
     }
   }
@@ -550,9 +550,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Import failed: $e')));
       }
     }
   }

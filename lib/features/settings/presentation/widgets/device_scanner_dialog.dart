@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../../core/ble/ble_device_info.dart';
 import '../../../../core/providers/ble_provider.dart';
 import '../../../../core/providers/settings_provider.dart';
@@ -108,9 +109,8 @@ class DeviceScannerDialog extends ConsumerWidget {
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(
-                                    0xFF10B981,
-                                  ).withValues(alpha: 0.15),
+                                  color: const Color(0xFF10B981)
+                                      .withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: const Text(

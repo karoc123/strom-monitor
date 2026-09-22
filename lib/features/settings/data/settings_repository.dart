@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../domain/app_settings.dart';
 
 /// Repository managing persistence of user settings in SharedPreferences.

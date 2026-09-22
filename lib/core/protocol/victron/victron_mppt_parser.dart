@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+
 import 'victron_crypto.dart';
 import 'victron_mppt_data.dart';
 
