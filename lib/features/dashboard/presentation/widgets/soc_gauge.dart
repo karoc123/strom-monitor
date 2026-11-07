@@ -10,6 +10,7 @@ class SocGauge extends StatelessWidget {
   final double power;
   final bool isCharging;
   final bool isDischarging;
+  final VoidCallback? onVoltageTap;
 
   const SocGauge({
     super.key,
@@ -19,6 +20,7 @@ class SocGauge extends StatelessWidget {
     required this.power,
     required this.isCharging,
     required this.isDischarging,
+    this.onVoltageTap,
   });
 
   Color _getStatusColor(BuildContext context) {
@@ -31,8 +33,12 @@ class SocGauge extends StatelessWidget {
   }
 
   String _getStatusText() {
-    if (isCharging) return 'Charging (+${current.toStringAsFixed(1)} A)';
-    if (isDischarging) return 'Discharging (${current.toStringAsFixed(1)} A)';
+    if (isCharging) {
+      return 'Charging (+${current.abs().toStringAsFixed(1)} A)';
+    }
+    if (isDischarging) {
+      return 'Discharging (-${current.abs().toStringAsFixed(1)} A)';
+    }
     return 'Standby';
   }
 
@@ -65,21 +71,24 @@ class SocGauge extends StatelessWidget {
             Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(_getStatusIcon(), size: 18, color: statusColor),
-                    const SizedBox(width: 4),
-                    Text(
-                      _getStatusText(),
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: statusColor,
-                        fontWeight: FontWeight.bold,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(_getStatusIcon(), size: 16, color: statusColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        _getStatusText(),
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: statusColor,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -103,12 +112,51 @@ class SocGauge extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
+                InkWell(
+                  onTap: onVoltageTap,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${voltage.toStringAsFixed(2)} V',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        if (onVoltageTap != null) ...[
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.info_outline,
+                            size: 13,
+                            color: theme.colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.7),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
                 Text(
-                  '${power.abs().toStringAsFixed(1)} W',
-                  style: theme.textTheme.titleMedium?.copyWith(
+                  isCharging
+                      ? '+${power.abs().toStringAsFixed(1)} W'
+                      : isDischarging
+                      ? '-${power.abs().toStringAsFixed(1)} W'
+                      : '${power.abs().toStringAsFixed(1)} W',
+                  style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.onSurfaceVariant,
+                    color: isCharging
+                        ? const Color(0xFF10B981)
+                        : isDischarging
+                        ? const Color(0xFFF59E0B)
+                        : theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],

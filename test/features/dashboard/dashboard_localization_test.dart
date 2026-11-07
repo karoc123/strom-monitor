@@ -64,11 +64,16 @@ void main() {
       expect(find.textContaining('anzeigen'), findsNothing);
 
       // Tap to expand
+      await tester.ensureVisible(
+        find.text('Show Details (Cells & Diagnostics)'),
+      );
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Show Details (Cells & Diagnostics)'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
       // Check collapse button text
+      await tester.ensureVisible(find.text('Show Less'));
       expect(find.text('Show Less'), findsOneWidget);
       expect(find.text('Weniger anzeigen'), findsNothing);
     });

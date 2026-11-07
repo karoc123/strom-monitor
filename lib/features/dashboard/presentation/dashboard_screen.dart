@@ -7,6 +7,7 @@ import '../../../core/providers/settings_provider.dart';
 import '../../settings/domain/app_settings.dart';
 import 'providers/live_telemetry_provider.dart';
 import 'widgets/cell_voltage_card.dart';
+import 'widgets/lifepo4_soc_dialog.dart';
 import 'widgets/metric_card.dart';
 import 'widgets/soc_gauge.dart';
 import 'widgets/solar_card.dart';
@@ -195,8 +196,99 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                           power: snapshot.basicInfo.power,
                           isCharging: snapshot.basicInfo.isCharging,
                           isDischarging: snapshot.basicInfo.isDischarging,
+                          onVoltageTap: () => showDialog<void>(
+                            context: context,
+                            builder: (context) => Lifepo4SocDialog(
+                              currentVoltage: snapshot.basicInfo.voltage,
+                              cellCount: snapshot.basicInfo.cellCount,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Metric Grid (Always Visible)
+                        GridView.count(
+                          crossAxisCount: 2,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 1.6,
+                          children: [
+                            MetricCard(
+                              label: 'Pack Voltage',
+                              value: snapshot.basicInfo.voltage.toStringAsFixed(
+                                2,
+                              ),
+                              unit: 'V',
+                              icon: Icons.electric_bolt_outlined,
+                              accentColor: const Color(0xFF3B82F6),
+                              onTap: () => showDialog<void>(
+                                context: context,
+                                builder: (context) => Lifepo4SocDialog(
+                                  currentVoltage: snapshot.basicInfo.voltage,
+                                  cellCount: snapshot.basicInfo.cellCount,
+                                ),
+                              ),
+                            ),
+                            MetricCard(
+                              label: 'Current',
+                              value: snapshot.basicInfo.isCharging
+                                  ? '+${snapshot.basicInfo.current.abs().toStringAsFixed(2)}'
+                                  : snapshot.basicInfo.isDischarging
+                                  ? '-${snapshot.basicInfo.current.abs().toStringAsFixed(2)}'
+                                  : snapshot.basicInfo.current.toStringAsFixed(
+                                      2,
+                                    ),
+                              unit: 'A',
+                              icon: snapshot.basicInfo.isCharging
+                                  ? Icons.arrow_downward
+                                  : Icons.arrow_upward,
+                              accentColor: snapshot.basicInfo.isCharging
+                                  ? const Color(0xFF10B981)
+                                  : snapshot.basicInfo.isDischarging
+                                  ? const Color(0xFFF59E0B)
+                                  : Colors.grey,
+                              valueColor: snapshot.basicInfo.isCharging
+                                  ? const Color(0xFF10B981)
+                                  : snapshot.basicInfo.isDischarging
+                                  ? const Color(0xFFF59E0B)
+                                  : null,
+                            ),
+                            MetricCard(
+                              label: 'Power',
+                              value: snapshot.basicInfo.isCharging
+                                  ? '+${snapshot.basicInfo.power.abs().toStringAsFixed(1)}'
+                                  : snapshot.basicInfo.isDischarging
+                                  ? '-${snapshot.basicInfo.power.abs().toStringAsFixed(1)}'
+                                  : snapshot.basicInfo.power
+                                        .abs()
+                                        .toStringAsFixed(1),
+                              unit: 'W',
+                              icon: Icons.speed_outlined,
+                              accentColor: snapshot.basicInfo.isCharging
+                                  ? const Color(0xFF10B981)
+                                  : snapshot.basicInfo.isDischarging
+                                  ? const Color(0xFFF59E0B)
+                                  : const Color(0xFF8B5CF6),
+                              valueColor: snapshot.basicInfo.isCharging
+                                  ? const Color(0xFF10B981)
+                                  : snapshot.basicInfo.isDischarging
+                                  ? const Color(0xFFF59E0B)
+                                  : null,
+                            ),
+                            MetricCard(
+                              label: 'Capacity',
+                              value:
+                                  '${snapshot.basicInfo.remainingCapacityAh.toStringAsFixed(1)} / ${snapshot.basicInfo.nominalCapacityAh.toStringAsFixed(0)}',
+                              unit: 'Ah',
+                              icon: Icons.battery_charging_full_outlined,
+                              accentColor: const Color(0xFF06B6D4),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 8),
+
                         InkWell(
                           borderRadius: BorderRadius.circular(8),
                           onTap: () {
@@ -232,60 +324,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                           ),
                         ),
                         if (_isBatteryDetailsExpanded) ...[
-                          const SizedBox(height: 12),
-                          // Metric Grid
-                          GridView.count(
-                            crossAxisCount: 2,
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            childAspectRatio: 1.6,
-                            children: [
-                              MetricCard(
-                                label: 'Pack Voltage',
-                                value: snapshot.basicInfo.voltage
-                                    .toStringAsFixed(2),
-                                unit: 'V',
-                                icon: Icons.electric_bolt_outlined,
-                                accentColor: const Color(0xFF3B82F6),
-                              ),
-                              MetricCard(
-                                label: 'Current',
-                                value: snapshot.basicInfo.current
-                                    .abs()
-                                    .toStringAsFixed(2),
-                                unit: 'A',
-                                icon: snapshot.basicInfo.isCharging
-                                    ? Icons.arrow_downward
-                                    : Icons.arrow_upward,
-                                accentColor: snapshot.basicInfo.isCharging
-                                    ? const Color(0xFF10B981)
-                                    : const Color(0xFFF59E0B),
-                              ),
-                              MetricCard(
-                                label: 'Power',
-                                value: snapshot.basicInfo.power
-                                    .abs()
-                                    .toStringAsFixed(1),
-                                unit: 'W',
-                                icon: Icons.speed_outlined,
-                                accentColor: const Color(0xFF8B5CF6),
-                              ),
-                              MetricCard(
-                                label: 'Capacity',
-                                value:
-                                    '${snapshot.basicInfo.remainingCapacityAh.toStringAsFixed(1)} / ${snapshot.basicInfo.nominalCapacityAh.toStringAsFixed(0)}',
-                                unit: 'Ah',
-                                icon: Icons.battery_charging_full_outlined,
-                                accentColor: const Color(0xFF06B6D4),
-                              ),
-                            ],
-                          ),
                           if (snapshot.cellVoltages.isNotEmpty) ...[
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 12),
                             CellVoltageCard(
                               cellVoltages: snapshot.cellVoltages,
+                              balanceStatusLow:
+                                  snapshot.basicInfo.balanceStatusLow,
+                              balanceStatusHigh:
+                                  snapshot.basicInfo.balanceStatusHigh,
                             ),
                           ],
                           const SizedBox(height: 12),
