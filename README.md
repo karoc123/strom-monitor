@@ -60,51 +60,6 @@ An open-source, lightweight, and battery-conscious Android application built wit
 
 ---
 
-## 🏛️ Clean Architecture
-
-The codebase strictly adheres to Clean Architecture with clear boundaries between Data, Domain, and Presentation layers:
-
-```
-lib/
-├── main.dart                       # Entrypoint, WorkManager initialization, Riverpod Scope
-├── app.dart                        # MaterialApp, Material 3 Theme, Navigation Shell
-├── core/
-│   ├── ble/                        # BLE Client, GATT notification handling, connection state machine
-│   │   ├── ble_client.dart
-│   │   ├── ble_connection_state.dart
-│   │   └── ble_device_info.dart
-│   ├── database/                   # SQLite Manager, Migrations, DAO
-│   │   ├── app_database.dart
-│   │   ├── reading_dao.dart
-│   │   └── models/
-│   │       └── battery_reading.dart
-│   ├── protocol/                   # JBD Checksum, Command Registers, Framing & Telemetry Parser
-│   │   ├── jbd_checksum.dart
-│   │   ├── jbd_command.dart
-│   │   ├── jbd_frame_builder.dart
-│   │   ├── jbd_frame_reassembler.dart
-│   │   └── jbd_telemetry_parser.dart
-│   └── providers/                  # Core Riverpod providers (BLE, Database, Settings)
-└── features/
-    ├── background/                 # Headless Android WorkManager task handler
-    │   ├── background_task_handler.dart
-    │   └── background_service_manager.dart
-    ├── dashboard/                  # Live Telemetry Gauge & Diagnostics
-    │   ├── data/telemetry_recorder.dart
-    │   └── presentation/
-    ├── history/                    # Time-Series Charts & Data Portability
-    │   ├── data/
-    │   │   ├── data_exporter.dart
-    │   │   └── downsampler.dart
-    │   └── presentation/
-    └── settings/                   # BLE Scanner & Pairing, Intervals, Pruning, GPL View
-        ├── data/settings_repository.dart
-        ├── domain/app_settings.dart
-        └── presentation/
-```
-
----
-
 ## 📡 Protocol Specifications
 
 ### 1. JBD BMS (GATT Protocol)
@@ -126,54 +81,6 @@ $$\text{Checksum} = (0x10000 - \sum \text{DataBytes}) \pmod{0x10000}$$
 * **Key Check Byte:** `advertisement[7] == key[0]`
 * **Telemetry Extracted:** Device State (0-9), Charger Error (0-119), Battery Voltage (0.01V), Battery Current (0.1A), Solar Power (1W), Yield Today (10Wh), Load Current (0.1A).
 
-
----
-
-## 🛠️ Prerequisites & Setup
-
-* **Flutter SDK:** $\ge 3.24.0$ (Dart $\ge 3.5.0$)
-* **Android SDK:** API 29+ (Target API 34+ / Android 14)
-* **Android NDK:** Standard Flutter NDK bundle
-
-### Required Android Permissions (Configured in Manifest):
-* `BLUETOOTH_SCAN` (`usesPermissionFlags="neverForLocation"`)
-* `BLUETOOTH_CONNECT`
-* `BLUETOOTH` & `BLUETOOTH_ADMIN` (Legacy Android 10/11)
-* `ACCESS_FINE_LOCATION` (Legacy Android 10/11)
-* `WAKE_LOCK` & `RECEIVE_BOOT_COMPLETED` (WorkManager scheduling)
-
----
-
-## 🚀 Build Instructions
-
-### 1. Clone & Fetch Dependencies
-```bash
-git clone https://github.com/karoc/jbd-battery-monitor.git
-cd jbd-battery-monitor
-flutter pub get
-```
-
-### 2. Run Static Analysis & Tests
-```bash
-# Verify formatting
-dart format --output=none --set-exit-if-changed .
-
-# Static analysis (zero warnings / zero errors)
-flutter analyze
-
-# Execute all automated unit tests
-flutter test
-```
-
-### 3. Build APK
-```bash
-# Build Debug APK
-flutter build apk --debug
-
-# Build Release APK
-flutter build apk --release
-```
-The compiled APK will be located at `build/app/outputs/flutter-apk/app-release.apk`.
 
 ---
 
@@ -203,24 +110,6 @@ To receive live solar telemetry without active pairing/bonding, Ström Monitor r
 3. Paste the 32-character Hex encryption key into the input field.
 4. Tap **Validate & Save**. The app will verify the key against incoming BLE advertisements in real-time.
 5. Return to **Dashboard** to see **Tile 2: Solar (Victron MPPT)** displaying live solar generation ($W$), daily harvest ($Wh$ / $kWh$), and charging state (Bulk, Absorption, Float).
-
----
-
-## 🔋 Hardware-in-the-Loop Testing
-
-To test with physical devices (Android smartphone + JBD BMS + Victron MPPT):
-
-1. Connect your Android smartphone via USB with USB-Debugging enabled.
-2. Verify device connection: `flutter devices`.
-3. Launch the app: `flutter run -d <device-id>`.
-4. Follow the pairing steps above for your BMS and MPPT controller.
-5. On the **Dashboard**, verify simultaneous live readouts for both battery and solar.
-6. Switch to **History** to verify stacked dual-chart analytics for battery SoC/current and solar power/yield.
-7. Configure background logging interval in **Settings** (e.g. 15 min), minimize the app, and observe scheduled telemetry logs:
-   ```bash
-   adb logcat | grep -i workmanager
-   ```
-
 
 ---
 
